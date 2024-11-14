@@ -2,6 +2,11 @@
 
 ![Design pattern 1](app/backend/static/agent_pic.png)
 
+## Demo
+Watch this video for a demonstration of this pattern's core feature, using intent detection to seamlessly transition between domain specific agents, in addition to the agent specific features for knowledge retrieval and source system interaction.
+
+https://github.com/user-attachments/assets/0b1c711a-efdc-4e69-8048-64f9d409e287
+
 ## Running this sample
 We'll follow 4 steps to get this example running in your own environment: pre-requisites, creating an index, setting up the environment, and running the app.
 
