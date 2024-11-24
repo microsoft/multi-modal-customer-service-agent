@@ -1,12 +1,14 @@
+import os
 import aiohttp
 import asyncio
 import json
+import yaml
 from enum import Enum
 from typing import Any, Callable, Optional
 from aiohttp import web
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from azure.core.credentials import AzureKeyCredential
-from utility import detect_intent_change, detect_intent, SessionState
+from utility import detect_intent, SessionState
 class ToolResultDirection(Enum):
     TO_SERVER = 1
     TO_CLIENT = 2
@@ -48,31 +50,30 @@ class RTMiddleTier:
     
     # Tools are server-side only for now, though the case could be made for client-side tools
     # in addition to server-side tools that are invisible to the client
-    tools: dict[str, Tool] = {}
-
+    tools: dict[str, dict[str, Tool]] = {}
+    current_agent_tools: dict[str, Tool] = {}
     # Server-enforced configuration, if set, these will override the client's configuration
     # Typically at least the model name and system message will be set by the server
     model: Optional[str] = None
-    system_message: Optional[str] = None
-    agent_name: Optional[str] = None
-    domain_description: Optional[str] = None
+    agents: Optional[list[dict]] = []
+    agent_names: Optional[list[str]] = []
+    current_agent: Optional[dict] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     disable_audio: Optional[bool] = None
-    backup_system_message: Optional[str] = None
-    backup_agent_name: Optional[str] = None
-    backup_domain_description: Optional[str] = None
-    backup_tools: dict[str, Tool] = {}
     max_history_length = 3
     _tools_pending = {}
     _token_provider = None
     transfer_conversation = False
+    target_agent_name = None
     history = []
     init_user_question = None
     session_state = SessionState() #to backup the state of the conversation
     session_state_key = '12345' #to be updated with the actual session id from client
 
     def __init__(self, endpoint: str, deployment: str, credentials: AzureKeyCredential | DefaultAzureCredential):
+        self.load_agents()
+        self.load_agent_tools()
         self.endpoint = endpoint
         self.deployment = deployment
         if isinstance(credentials, AzureKeyCredential):
@@ -83,14 +84,65 @@ class RTMiddleTier:
         init_history = self.session_state.get(self.session_state_key)
         if init_history:
             self.history = init_history
+    
+    def load_agents(self):
+        base_path = "agents/agent_profiles"  
+        agent_profiles = [f for f in os.listdir(base_path) if f.endswith("_profile.yaml")]
+        # Load user profile to personalize the agent persona
+        with open('../../../data/user_profile.json') as f:
+            user_profile = json.load(f)
+        for profile in agent_profiles:
+            profile_path = os.path.join(base_path, profile)
+            with open(profile_path, 'r') as file:
+                try:
+                    data = yaml.safe_load(file)
+                    data['persona'] = data['persona'].format(customer_name =user_profile['name'], customer_id=user_profile['customer_id'])
+                    self.agents.append(data)
+                except yaml.YAMLError as exc:
+                    print(f"Error loading {profile}: {exc}")
+        self.agent_names = [agent['name'] for agent in self.agents]
+        print("available agents:", self.agent_names)  
+        self.current_agent = next(agent for agent in self.agents if agent['default_agent'])
+    
+    def load_agent_tools(self):
+        from agents.tools.hotel_tools import hotel_tools
+        from agents.tools.flight_tools import flight_tools
+
+        agent_tools = {
+            'hotel_agent': hotel_tools,
+            'flight_agent': flight_tools
+        }
+
+        self.attach_tools(agent_tools)
+
+    def attach_tools(self, agent_tools: dict[str, dict[str, Callable]]):
+        for agent in self.agents:
+            agent_name = agent.get('name')
+            self.tools[agent_name] = {}
+            for tool in agent.get('tools', []):
+                tool_name = tool['name']
+                tool_schema = {  
+                    "type": tool['type'],  
+                    "name": tool['name'],  
+                    "description": tool['description'],  
+                    "parameters": tool['parameters']  
+                }  
+                self.tools[agent_name][tool_name] = Tool(schema=tool_schema, target=agent_tools[agent_name][tool_name])
+        self.set_current_agent_tools()
+
+    def set_current_agent_tools(self):
+        self.current_agent_tools = self.tools[self.current_agent.get('name')]
+
     async def _detect_intent_change(self):  
         # Use the accumulated history for intent detection
         extracted_history = [f"{item['item']['role']}: {item['item']['content'][0]['text']}" for item in self.history]
-        print("current agent: ", self.agent_name,  "alternate agent: ", self.backup_agent_name)
+        print("current agent: ", self.current_agent.get('name'))
         conversation = "\n".join(extracted_history)  
         intent = await detect_intent(conversation) 
         print("detected intent ", intent)
-        if intent == self.backup_agent_name:  
+        if intent in self.agent_names and intent != self.current_agent.get('name'):  
+            self.target_agent_name = intent
+            print("new agent: ", self.target_agent_name)
             self.transfer_conversation = True  
 
             
@@ -113,8 +165,8 @@ class RTMiddleTier:
             }  
         }  
         session = server_msg["session"]
-        if self.system_message is not None:
-            session["instructions"] = self.system_message
+        if self.current_agent.get('persona') is not None:
+            session["instructions"] = self.current_agent.get('persona')
         if self.temperature is not None:
             session["temperature"] = self.temperature
         if self.max_tokens is not None:
@@ -122,7 +174,7 @@ class RTMiddleTier:
         if self.disable_audio is not None:
             session["disable_audio"] = self.disable_audio
         session["tool_choice"] = "auto" if len(self.tools) > 0 else "none"
-        session["tools"] = [tool.schema for tool in self.tools.values()]
+        session["tools"] = [tool.schema for tool in self.current_agent_tools.values()]
         # new_msg = await self._process_message_to_server(new_msg, ws)
 
         await server_ws.send_json(server_msg)
@@ -190,7 +242,7 @@ class RTMiddleTier:
                         try:
                             item = message["item"]
                             tool_call = self._tools_pending[message["item"]["call_id"]]
-                            tool = self.tools[item["name"]]
+                            tool = self.current_agent_tools[item["name"]]
                             args = item["arguments"]
                             result = await tool.target(json.loads(args))
                         except Exception as e:
@@ -290,8 +342,8 @@ class RTMiddleTier:
             match message["type"]:
                 case "session.update":
                     session = message["session"]
-                    if self.system_message is not None:
-                        session["instructions"] = self.system_message
+                    if self.current_agent.get('persona') is not None:
+                        session["instructions"] = self.current_agent.get('persona')
                         # print("updated system message: ", session["instructions"])
                     if self.temperature is not None:
                         session["temperature"] = self.temperature
@@ -300,7 +352,7 @@ class RTMiddleTier:
                     if self.disable_audio is not None:
                         session["disable_audio"] = self.disable_audio
                     session["tool_choice"] = "auto" if len(self.tools) > 0 else "none"
-                    session["tools"] = [tool.schema for tool in self.tools.values()]
+                    session["tools"] = [tool.schema for tool in self.current_agent_tools.values()]
                     updated_message = json.dumps(message)
 
         return updated_message
@@ -342,26 +394,16 @@ class RTMiddleTier:
                         if msg.type == aiohttp.WSMsgType.TEXT:
                             new_msg = await self._process_message_to_client(msg, ws, target_ws)
                             
-                            if new_msg is not None and not self.transfer_conversation:
+                            if new_msg is not None and self.target_agent_name is None:
 
                                 await ws.send_str(new_msg)
                             else:
-                                if self.transfer_conversation:
+                                if self.target_agent_name is not None:
 
-                                    temp_system_message = self.system_message
-                                    temp_agent_name = self.agent_name
-                                    temp_domain_description = self.domain_description
-                                    self.system_message = self.backup_system_message
-                                    self.agent_name = self.backup_agent_name
-                                    self.domain_description = self.backup_domain_description
-                                    self.backup_agent_name = temp_agent_name
-                                    self.backup_domain_description = temp_domain_description
-                                    self.backup_system_message = temp_system_message
-                                
-                                    temp_tools = self.tools
-                                    self.tools = self.backup_tools
-                                    self.backup_tools = temp_tools
+                                    self.current_agent = next((agent for agent in self.agents if agent.get('name') == self.target_agent_name), None)
+                                    self.set_current_agent_tools()
                                     self.transfer_conversation = False
+                                    self.target_agent_name = None
                                     await self._reinitialize_state(target_ws)
 
                                     await target_ws.send_json({'type': 'response.create'})

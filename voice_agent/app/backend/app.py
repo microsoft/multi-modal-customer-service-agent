@@ -1,10 +1,7 @@
 import os
-import json
 from dotenv import load_dotenv
 from aiohttp import web
 # from ragtools import attach_rag_tools
-from hotel_tools import attach_hotel_tools, attach_hotel_tools_as_backup, get_system_message as get_hotel_system_message, get_agent_name as get_hotel_agent_name, get_domain_description as get_hotel_domain_description
-from flight_tools import attach_flight_tools, attach_flight_tools_as_backup, get_system_message as get_flight_system_message, get_agent_name as get_flight_agent_name, get_domain_description as get_flight_domain_description
 from rtmt import RTMiddleTier
 from azure.identity import DefaultAzureCredential
 from azure.core.credentials import AzureKeyCredential
@@ -24,22 +21,6 @@ if __name__ == "__main__":
     app = web.Application()
 
     rtmt = RTMiddleTier(llm_endpoint, llm_deployment, AzureKeyCredential(llm_key) if llm_key else credentials)
-    with open('../../../data/user_profile.json') as f:
-        user_profile = json.load(f)
-    # print(user_profile)
-    system_message = get_hotel_system_message().format(customer_name =user_profile['name'], customer_id=user_profile['customer_id'])
-
-    backup_system_message = get_flight_system_message().format(customer_name =user_profile['name'], customer_id=user_profile['customer_id'])
-
-    rtmt.system_message = system_message
-    rtmt.agent_name = get_hotel_agent_name()
-    rtmt.backup_agent_name = get_flight_agent_name()
-    rtmt.domain_description = get_hotel_domain_description()
-    rtmt.backup_domain_description = get_flight_domain_description()
-    rtmt.backup_system_message = backup_system_message
-
-    attach_hotel_tools(rtmt)
-    attach_flight_tools_as_backup(rtmt)
 
     rtmt.attach_to_app(app, "/realtime")
 

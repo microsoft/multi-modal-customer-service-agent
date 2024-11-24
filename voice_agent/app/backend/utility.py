@@ -46,19 +46,6 @@ INTENT_SHIFT_API_KEY = os.environ.get("INTENT_SHIFT_API_KEY")
 INTENT_SHIFT_API_URL = os.environ.get("INTENT_SHIFT_API_URL") 
 INTENT_SHIFT_API_DEPLOYMENT=os.environ.get("INTENT_SHIFT_API_DEPLOYMENT")
 chat_deployment=os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT")
-prompt_template = load_entity('prompt.yaml', "classifier_agent")["persona"]
-
-async def detect_intent_change(job_description, conversation):
-        start_time = time.time()
-        conversation= [{"role":"user", "content":prompt_template.format(job_description=job_description, conversation=conversation)}]
-
-        response = await async_client.chat.completions.create(  
-            model=chat_deployment,  
-            messages=conversation,  
-        )  
-        end_time = time.time()  
-        print(f"Job succeeded in {end_time - start_time:.2f} seconds.") 
-        return response.choices[0].message.content.lower()
   
 def allowSelfSignedHttps(allowed):  
     if allowed and not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):  
