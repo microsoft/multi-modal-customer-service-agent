@@ -1,6 +1,5 @@
-import yaml  
 from typing import Any  
-from rtmt import RTMiddleTier, Tool, ToolResult, ToolResultDirection  
+from rtmt import Tool, ToolResult, ToolResultDirection  
 import os  
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey  
 from sqlalchemy.ext.declarative import declarative_base  
@@ -203,88 +202,13 @@ async def transfer_conversation_tool(args: Any) -> ToolResult:
     user_request = args['user_request']  
     result = transfer_conversation(user_request)  
     return ToolResult(result, ToolResultDirection.TO_SERVER)  
-  
-# Load YAML file  
-import yaml
-# Load YAML file  
-def load_entity(file_path, entity_name):  
-    with open(file_path, 'r') as file:  
-        data = yaml.safe_load(file)  
-    for entity in data['agents']:  
-        if entity.get('name') == entity_name:  
-            return entity  
-    return None  
-  
-def transform_tools(tools):  
-    transformed_tools = []  
-    for tool in tools:  
-        transformed_tool = {  
-            "type": "function",  
-            "function": {  
-                "name": tool['name'],  
-                "description": tool['description'],  
-                "parameters": tool.get('parameters', {})  
-            }  
-        }  
-        transformed_tools.append(transformed_tool)  
-    return transformed_tools  
 
-agent = load_entity('prompt.yaml', "hotel_agent")
-def get_system_message():
-    return agent.get('persona', "")
-def get_domain_description():
-    return agent.get('domain_description', "")
-def get_agent_name():
-    return agent.get('name', "")
-
-# Attach tools  
-def attach_hotel_tools(rtmt: RTMiddleTier) -> None:  
-    
-    for tool in agent.get('tools', []):
-        tool_name = tool['name']  
-        tool_schema = {  
-            "type": tool['type'],  
-            "name": tool['name'],  
-            "description": tool['description'],  
-            "parameters": tool['parameters']  
-        }  
-        if tool_name == "search_hotel_knowledgebase":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=hotel_search_tool)  
-        elif tool_name == "query_rooms":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=query_rooms_tool)  
-        elif tool_name == "check_reservation_status":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=check_reservation_status_tool)  
-        elif tool_name == "confirm_reservation_change":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=confirm_reservation_change_tool)  
-        elif tool_name == "check_change_reservation":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=check_change_reservation_tool)  
-        elif tool_name == "load_user_reservation_info":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=load_user_reservation_info_tool)  
-        elif tool_name == "transfer_conversation":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=transfer_conversation_tool)  
-
-def attach_hotel_tools_as_backup(rtmt: RTMiddleTier) -> None:  
-    
-    for tool in agent.get('tools', []):
-        tool_name = tool['name']  
-        tool_schema = {  
-            "type": tool['type'],  
-            "name": tool['name'],  
-            "description": tool['description'],  
-            "parameters": tool['parameters']  
-        }  
-        if tool_name == "search_hotel_knowledgebase":  
-            rtmt.backup_tools[tool_name] = Tool(schema=tool_schema, target=hotel_search_tool)  
-        elif tool_name == "query_rooms":  
-            rtmt.backup_tools[tool_name] = Tool(schema=tool_schema, target=query_rooms_tool)  
-        elif tool_name == "check_reservation_status":  
-            rtmt.tools[tool_name] = Tool(schema=tool_schema, target=check_reservation_status_tool)  
-        elif tool_name == "confirm_reservation_change":  
-            rtmt.backup_tools[tool_name] = Tool(schema=tool_schema, target=confirm_reservation_change_tool)  
-        elif tool_name == "check_change_reservation":  
-            rtmt.backup_tools[tool_name] = Tool(schema=tool_schema, target=check_change_reservation_tool)  
-        elif tool_name == "load_user_reservation_info":  
-            rtmt.backup_tools[tool_name] = Tool(schema=tool_schema, target=load_user_reservation_info_tool)  
-        elif tool_name == "transfer_conversation":  
-            rtmt.backup_tools[tool_name] = Tool(schema=tool_schema, target=transfer_conversation_tool)  
-
+hotel_tools = {
+    "search_hotel_knowledgebase": hotel_search_tool,
+    "query_rooms": query_rooms_tool,
+    "check_reservation_status": check_reservation_status_tool,
+    "confirm_reservation_change": confirm_reservation_change_tool,
+    "check_change_reservation": check_change_reservation_tool,
+    "load_user_reservation_info": load_user_reservation_info_tool,
+    "transfer_conversation": transfer_conversation_tool
+}

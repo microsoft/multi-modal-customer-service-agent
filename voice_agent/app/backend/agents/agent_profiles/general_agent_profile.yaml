@@ -1,0 +1,6 @@
+name: general_agent
+domain_description: |
+  "Deal with general customer inquiries, complaints, and requests."
+default_agent: false 
+persona: |  
+  You are a helpful AI assistant.
