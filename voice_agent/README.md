@@ -16,6 +16,9 @@ You'll need instances of the following Azure services. You can re-use service in
 2. Train an intent_detection model with a SLM using Azure AI Studio. Check [the training data](./intent_detection_model)
 ### 2. Setting up the environment
 The app needs to know which service endpoints to use for the Azure OpenAI and Azure AI Search. The following variables can be set as environment variables, or you can create a ".env" file in the "app/backend/" directory with this content.
+
+The voice agent relies on a fine-tuned SLM deployment to classify intent. If you do not have this deployment available then you can use an Azure OpenAI gpt-4o-mini deployment, which has low enough latency to simulate the classifier model. You'll likely find that latency is not quite low enough to avoid the real-time model responding and being cut off once the new agent is assigned. To use gpt-4o-mini leave the `INTENT_SHIFT_API_*` env variables empty and supply `AZURE_OPENAI_4O_MINI_DEPLOYMENT`.
+
    ```
 AZURE_OPENAI_RT_ENDPOINT=wss://YOUR_OPENAI_INSTANCE.openai.azure.com
 AZURE_OPENAI_RT_DEPLOYMENT=gpt-4o
@@ -25,6 +28,7 @@ AZURE_OPENAI_API_KEY=YOUR_KEY
 AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
 AZURE_OPENAI_API_VERSION="2024-09-01-preview"
 AZURE_OPENAI_EMB_DEPLOYMENT="text-embedding-ada-002"
+AZURE_OPENAI_4O_MINI_DEPLOYMENT=YOUR_AZURE_OPENAI_4O_MINI_DEPLOYMENT_NAME
 INTENT_SHIFT_API_KEY=KEY_TO_DEPLOYED_DETECTION_MODEL
 INTENT_SHIFT_API_URL=https://YOUR_DETECTION_ENDPOINT.westus2.inference.ml.azure.com/score
 INTENT_SHIFT_API_DEPLOYMENT=NAME_OF_MODEL_DEPLOYMENT
@@ -59,6 +63,9 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
 
 2. Clone the repo (`git clone https://github.com/microsoft/multi-modal-customer-service-agent`)
 4. The app needs to know which service endpoints to use for the Azure OpenAI and Azure AI Search. The following variables can be set as environment variables, or you can create a ".env" file in the "app/backend/" directory with this content.
+
+The voice agent relies on a fine-tuned SLM deployment to classify intent. If you do not have this deployment available then you can use an Azure OpenAI gpt-4o-mini deployment, which has low enough latency to simulate the classifier model. You'll likely find that latency is not quite low enough to avoid the real-time model responding and being cut off once the new agent is assigned. To use gpt-4o-mini leave the `INTENT_SHIFT_API_*` env variables empty and supply `AZURE_OPENAI_4O_MINI_DEPLOYMENT`.
+
    ```
    AZURE_OPENAI_RT_ENDPOINT=wss://<your instance name>.openai.azure.com
    AZURE_OPENAI_RT_DEPLOYMENT=gpt-4o
@@ -68,6 +75,7 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
    AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
    AZURE_OPENAI_API_VERSION="2024-09-01-preview"
    AZURE_OPENAI_EMB_DEPLOYMENT=<"text-embedding-ada-002" or the embedding deployment for policy question>
+   AZURE_OPENAI_4O_MINI_DEPLOYMENT=<YOUR_AZURE_OPENAI_4O_MINI_DEPLOYMENT_NAME>
    INTENT_SHIFT_API_KEY=<your api key for the custom intent detection model>
    INTENT_SHIFT_API_URL=<your api URL for the custom intent detection model>
    INTENT_SHIFT_API_DEPLOYMENT=<your api deployment for the custom intent detection model>
