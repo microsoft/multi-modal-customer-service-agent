@@ -51,10 +51,22 @@ export default function useRealTime({
     onReceivedInputAudioTranscriptionCompleted,
     onReceivedError
 }: Parameters) {
+
+    function getOrCreateSessionKey() {
+        let sessionKey = localStorage.getItem("session_state_key");
+        if (!sessionKey) {
+        sessionKey = crypto.randomUUID();
+        localStorage.setItem("session_state_key", sessionKey);
+        }
+        return sessionKey;
+    }
+    
+    const sessionKey = getOrCreateSessionKey();
+    
     const wsEndpoint = useDirectAoaiApi
         ? `${aoaiEndpointOverride}/openai/realtime?api-key=${aoaiApiKeyOverride}&deployment=${aoaiModelOverride}&api-version=2024-10-01-preview`
-        : `/realtime`;
-
+        : `/realtime?session_state_key=${sessionKey}`;
+    
     const { sendJsonMessage } = useWebSocket(wsEndpoint, {
         onOpen: () => onWebSocketOpen?.(),
         onClose: () => onWebSocketClose?.(),

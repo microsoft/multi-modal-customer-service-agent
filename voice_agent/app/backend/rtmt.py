@@ -9,6 +9,11 @@ from aiohttp import web
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from azure.core.credentials import AzureKeyCredential
 from utility import detect_intent, SessionState
+import logging  
+# Configure logging  
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")  
+logger = logging.getLogger(__name__)  
+
 class ToolResultDirection(Enum):
     TO_SERVER = 1
     TO_CLIENT = 2
@@ -69,7 +74,6 @@ class RTMiddleTier:
     history = []
     init_user_question = None
     session_state = SessionState() #to backup the state of the conversation
-    session_state_key = '12345' #to be updated with the actual session id from client
 
     def __init__(self, endpoint: str, deployment: str, credentials: AzureKeyCredential | DefaultAzureCredential):
         self.load_agents()
@@ -81,9 +85,9 @@ class RTMiddleTier:
         else:
             self._token_provider = get_bearer_token_provider(credentials, "https://cognitiveservices.azure.com/.default")
             self._token_provider() # Warm up during startup so we have a token cached when the first request arrives
-        init_history = self.session_state.get(self.session_state_key)
-        if init_history:
-            self.history = init_history
+        # init_history = self.session_state.get(self.session_state_key)
+        # if init_history:
+        #     self.history = init_history
     
     def load_agents(self):
         base_path = "agents/agent_profiles"  
@@ -99,9 +103,9 @@ class RTMiddleTier:
                     data['persona'] = data['persona'].format(customer_name =user_profile['name'], customer_id=user_profile['customer_id'])
                     self.agents.append(data)
                 except yaml.YAMLError as exc:
-                    print(f"Error loading {profile}: {exc}")
+                    logger.error(f"Error loading {profile}: {exc}")  
         self.agent_names = [agent['name'] for agent in self.agents]
-        print("available agents:", self.agent_names)  
+        logger.info("Available agents: %s", self.agent_names)  
         self.current_agent = next(agent for agent in self.agents if agent['default_agent'])
     
     def load_agent_tools(self):
@@ -136,13 +140,13 @@ class RTMiddleTier:
     async def _detect_intent_change(self):  
         # Use the accumulated history for intent detection
         extracted_history = [f"{item['item']['role']}: {item['item']['content'][0]['text']}" for item in self.history]
-        print("current agent: ", self.current_agent.get('name'))
+        logger.info("Current agent: %s", self.current_agent.get('name'))  
         conversation = "\n".join(extracted_history)  
         intent = await detect_intent(conversation) 
-        print("detected intent ", intent)
+        logger.info("Detected intent: %s", intent)  
         if intent in self.agent_names and intent != self.current_agent.get('name'):  
             self.target_agent_name = intent
-            print("new agent: ", self.target_agent_name)
+            logger.info("Switching to new agent: %s", self.target_agent_name)  
             self.transfer_conversation = True  
 
             
@@ -184,16 +188,11 @@ class RTMiddleTier:
         updated_message = msg.data
         if message is not None:
             if "delta" not in message:
-                print("message type\n", message["type"])
                 if message["type"]=="error":
-                    print(message)
-            if "item" in message:
-                print("item type\n", message["item"]["type"])
-            if message.get("transcript"):
-                print(message.get("transcript"))
+                    logger.error(message)
             match message["type"]:
                 case "session.created":
-                    print("session created")
+                    logger.info("session created")
                     session = message["session"]
                     # Hide the instructions, tools and max tokens from clients, if we ever allow client-side 
                     # tools, this will need updating
@@ -208,7 +207,7 @@ class RTMiddleTier:
                         
                     if message["item"]["type"] == "function_call":
                         if  message["item"]["name"]=="transfer_conversation":
-                            print("detecting transfer_conversation in function calling")
+                            logger.info("detecting transfer_conversation in function calling")
                             if not self.use_classification_model:
                                 self.transfer_conversation = True
 
@@ -273,7 +272,6 @@ class RTMiddleTier:
                         }
                         self._tools_pending.clear() # Any chance tool calls could be interleaved across different outstanding responses?
                         await server_ws.send_json(response_create)
-                        print("send response create after tool calling")
                     if "response" in message:
                         replace = False
                         for i, output in enumerate(reversed(message["response"]["output"])):
@@ -282,7 +280,7 @@ class RTMiddleTier:
                                     message["response"]["output"].pop(i) 
                                     replace = True 
                                 except IndexError:
-                                    print("IndexError",  message["response"]["output"])
+                                    logger.error("IndexError %s",  message["response"]["output"])
                                 
                         if replace:
                             updated_message = json.dumps(message)    
@@ -307,9 +305,11 @@ class RTMiddleTier:
                         if self.use_classification_model:   
                             asyncio.create_task(self._detect_intent_change())  
 
-                    # Retain only the last n turns  
+                    # Retain only the last n turnss  
                     if len(self.history) > self.max_history_length:  
                         self.history.pop(0)  
+                    # Back up the updated history  
+                    self.session_state.set(self.session_state_key, self.history)  
 
                 case "response.audio_transcript.done":
                     ## add logic to detect intent change
@@ -327,10 +327,12 @@ class RTMiddleTier:
                         }
                         })
 
-                    # Retain only the last n turns  
-                    if len(self.history) > self.max_history_length:  
-                        self.history.pop(0)  
+                    # Retain only the last n turns
+                    self.history = self.history[-self.max_history_length:]
+                    self.session_state.set(self.session_state_key, self.history)
     
+                    # Back up the updated history  
+                    self.session_state.set(self.session_state_key, self.history)  
 
         return updated_message
 
@@ -344,7 +346,6 @@ class RTMiddleTier:
                     session = message["session"]
                     if self.current_agent.get('persona') is not None:
                         session["instructions"] = self.current_agent.get('persona')
-                        # print("updated system message: ", session["instructions"])
                     if self.temperature is not None:
                         session["temperature"] = self.temperature
                     if self.max_tokens is not None:
@@ -357,11 +358,11 @@ class RTMiddleTier:
 
         return updated_message
     async def _reinitialize_state(self, target_ws: web.WebSocketResponse):
-        print("cancelling current response")
+        logger.info("cancelling current response")
         await target_ws.send_json({"type": "response.cancel"})
-        print("re-initializing session state")
+        logger.info("Reinitializing session state")  
         server_msg = {"type":"input_audio_buffer.clear"}
-        print("clearing audio buffer")
+        logger.info("Cleared audio buffer")  
         await target_ws.send_json(server_msg)
         await self._attach_instruction(target_ws)
         if self.history:
@@ -387,7 +388,7 @@ class RTMiddleTier:
                             if new_msg is not None:
                                 await target_ws.send_str(new_msg)
                         else:
-                            print("Error: unexpected message type:", msg.type)
+                            logger.error("Unexpected message type from client: %s", msg.type)  
 
                 async def from_server_to_client():
                     async for msg in target_ws:
@@ -410,12 +411,12 @@ class RTMiddleTier:
 
 
                         else:
-                            print("Error: unexpected message type:", msg.type)
+                            logger.error("Unexpected message type from server: %s", msg.type)  
 
                 try:
                     await asyncio.gather(from_client_to_server(), from_server_to_client())
                 except ConnectionResetError:
-                    print("ConnectionResetError")
+                    logger.error("ConnectionResetError occurred")  
                     await self._reinitialize_state(target_ws)
 
     async def _websocket_handler(self, request: web.Request):
@@ -425,4 +426,14 @@ class RTMiddleTier:
         return ws
     
     def attach_to_app(self, app, path):
-        app.router.add_get(path, self._websocket_handler)
+        async def _handler_with_session_key(request: web.Request):
+            # Extract session_state_key from query parameter (use a default if not provided)
+            self.session_state_key = request.query.get("session_state_key", "default_session_id")
+            logger.info("Session state key: %s", self.session_state_key)  
+            # Pull any existing conversation history
+            init_history = self.session_state.get(self.session_state_key)
+            if init_history:
+                logger.info("Retrieved session state with key: %s", self.session_state_key)  
+                self.history = init_history
+            return await self._websocket_handler(request)
+        app.router.add_get(path, _handler_with_session_key)
