@@ -1,5 +1,7 @@
 # Multi-modal & Multi-domain agent solution accelerator 
 This repository contains examples of a multi-domain design to facilitate scaling across various domains. We have developed two implementations: one for text-based communication and another for voice-based communication. Both implementations address a common business scenario: customer service for flight and hotel bookings. The primary goal is to automate customer service for a travel booking agency. The customer service function assists registered customers in modifying their hotel and flight bookings, confirming reservations, and addressing inquiries about hotel and flight policies.  
+## Check out our blog post at this link https://techcommunity.microsoft.com/blog/machinelearningblog/automating-real-time-multi-modal-customer-service-with-ai/4354892
+
 
 ### Demo
 Watch this video for a demonstration of the multi-domain design in action. Intent detection is used to transition between the domain specific agents behind the scenes creating a seamless customer experience.
