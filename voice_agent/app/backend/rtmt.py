@@ -71,7 +71,6 @@ class RTMiddleTier:
     _token_provider = None
     transfer_conversation = False
     target_agent_name = None
-    intent_detection_complete = False
     history = []
     init_user_question = None
     session_state = SessionState() #to backup the state of the conversation
@@ -148,9 +147,6 @@ class RTMiddleTier:
         if intent in self.agent_names and intent != self.current_agent.get('name'):  
             self.target_agent_name = intent
             logger.info("Switching to new agent: %s", self.target_agent_name)  
-            self.transfer_conversation = True  
-        self.intent_detection_complete = True
-
             
 
     async def _attach_instruction(self, server_ws):
@@ -306,7 +302,15 @@ class RTMiddleTier:
                         # todo: extend the conversation history when transfer conversation so that next agent has more context. Last request might not be sufficient
                         # Trigger intent detection
                         if self.use_classification_model:   
-                            await self._detect_intent_change()                            
+                            await self._detect_intent_change()
+                            if self.target_agent_name is not None:
+                                self.current_agent = next((agent for agent in self.agents if agent.get('name') == self.target_agent_name), None)
+                                self.set_current_agent_tools()
+                                self.target_agent_name = None
+                                await self._reinitialize_state(server_ws)
+                            
+                            print("Firing response.create to respond after intent detection.")
+                            await server_ws.send_json({'type': 'response.create'})                        
 
                     # Retain only the last n turnss  
                     if len(self.history) > self.max_history_length:  
@@ -397,22 +401,8 @@ class RTMiddleTier:
                     async for msg in target_ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
                             new_msg = await self._process_message_to_client(msg, ws, target_ws)
-                            
-                            if self.target_agent_name is not None:
-                                self.current_agent = next((agent for agent in self.agents if agent.get('name') == self.target_agent_name), None)
-                                self.set_current_agent_tools()
-                                self.transfer_conversation = False
-                                self.target_agent_name = None
-                                await self._reinitialize_state(target_ws)
-                                print("Firing response.create to respond after reinitialized state.")
-                                await target_ws.send_json({'type': 'response.create'})
-                            
-                            elif self.intent_detection_complete:
-                                self.intent_detection_complete = False
-                                print("Firing response.create to respond after intent detection.")
-                                await target_ws.send_json({'type': 'response.create'})
-                            
-                            elif new_msg is not None:
+                                                        
+                            if new_msg is not None:
                                 #logger.info("Sending message to client: %s", new_msg)
                                 await ws.send_str(new_msg)
 
