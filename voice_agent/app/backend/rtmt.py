@@ -309,7 +309,6 @@ class RTMiddleTier:
                                 self.target_agent_name = None
                                 await self._reinitialize_state(server_ws)
                             
-                            print("Firing response.create to respond after intent detection.")
                             await server_ws.send_json({'type': 'response.create'})                        
 
                     # Retain only the last n turnss  
@@ -365,8 +364,6 @@ class RTMiddleTier:
 
         return updated_message
     async def _reinitialize_state(self, target_ws: web.WebSocketResponse):
-        #logger.info("cancelling current response")
-        #await target_ws.send_json({"type": "response.cancel"})
         logger.info("Reinitializing session state")  
         server_msg = {"type":"input_audio_buffer.clear"}
         logger.info("Cleared audio buffer")  
@@ -400,13 +397,9 @@ class RTMiddleTier:
                 async def from_server_to_client():
                     async for msg in target_ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
-                            new_msg = await self._process_message_to_client(msg, ws, target_ws)
-                                                        
+                            new_msg = await self._process_message_to_client(msg, ws, target_ws)                  
                             if new_msg is not None:
-                                #logger.info("Sending message to client: %s", new_msg)
                                 await ws.send_str(new_msg)
-
-
                         else:
                             logger.error("Unexpected message type from server: %s", msg.type)  
 
