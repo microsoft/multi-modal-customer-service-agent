@@ -9,7 +9,6 @@ from typing import Any, Callable, Optional
 from aiohttp import web  
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider  
 from azure.core.credentials import AzureKeyCredential  
-from utility import detect_intent, SessionState  
   
 # Configure logging  
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")  
