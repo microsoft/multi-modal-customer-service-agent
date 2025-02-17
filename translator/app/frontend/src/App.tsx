@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";  
-import { Mic, MicOff } from "lucide-react";  
+import { Mic, MicOff, Clipboard, Check } from "lucide-react"; // Add Check icon  
 import { Button } from "@/components/ui/button";  
 import StatusMessage from "@/components/ui/status-message";  
 import useRealTime from "@/hooks/useRealtime";  
@@ -13,7 +13,33 @@ const SUPPORTED_LANGUAGES = [
   { code: "fr", name: "French" },  
   { code: "vi", name: "Vietnamese" },  
   { code: "de", name: "German" },  
-  { code: "ja", name: "Japanese" },  
+  { code: "ja", name: "Japanese" }, 
+  { code: "ko", name: "Korean" },
+{ code: "zh", name: "Chinese" },
+{ code: "pt", name: "Portuguese" },
+{ code: "ar", name: "Arabic" },
+{ code: "ru", name: "Russian" },
+{ code: "it", name: "Italian" },
+{ code: "tr", name: "Turkish" },
+{ code: "pl", name: "Polish" },
+{ code: "nl", name: "Dutch" },
+{ code: "sv", name: "Swedish" },
+{ code: "da", name: "Danish" },
+{ code: "fi", name: "Finnish" },
+{ code: "no", name: "Norwegian" },
+{ code: "cs", name: "Czech" },
+{ code: "hu", name: "Hungarian" },
+{ code: "ro", name: "Romanian" },
+{ code: "sk", name: "Slovak" },
+{ code: "bg", name: "Bulgarian" },
+{ code: "el", name: "Greek" },
+{ code: "th", name: "Thai" },
+{ code: "id", name: "Indonesian" },
+{ code: "hi", name: "Hindi" },
+{ code: "he", name: "Hebrew" },
+{ code: "ms", name: "Malay" },
+
+
 ];  
   
 function App() {  
@@ -25,6 +51,7 @@ function App() {
   const [isSessionReady, setIsSessionReady] = useState(false);  
   const [connectionError, setConnectionError] = useState("");  
   const [joinCode, setJoinCode] = useState("");  
+  const [isCopied, setIsCopied] = useState(false); // State to track copy status  
   
   const { stop: stopAudioPlayer, reset: resetAudioPlayer, play: playAudio } = useAudioPlayer();  
   
@@ -67,8 +94,7 @@ function App() {
     onWebSocketClose: () => console.log("WebSocket connection closed"),  
     onWebSocketError: (event) => console.error("WebSocket error:", event),  
     onReceivedError: (message) => console.error("Error:", message),  
-    onReceivedResponseAudioDelta: (message) => { 
-         
+    onReceivedResponseAudioDelta: (message) => {  
       if (isRecording) playAudio(message.delta);  
     },  
     onReceivedInputAudioBufferSpeechStarted: () => {  
@@ -104,9 +130,7 @@ function App() {
     setConnectionError("");  
     try {  
       const resp = await fetch(  
-        `/handshake?action=join&session_key=${encodeURIComponent(  
-          joinCode  
-        )}&user_lang=${encodeURIComponent(userLang)}`  
+        `/handshake?action=join&session_key=${encodeURIComponent(joinCode)}&user_lang=${encodeURIComponent(userLang)}`  
       );  
       const data = await resp.json();  
       if (data.status === "ok") {  
@@ -136,6 +160,13 @@ function App() {
     }  
   };  
   
+  const copyToClipboard = () => {  
+    if (sessionKey) {  
+      navigator.clipboard.writeText(sessionKey)  
+        .then(() => setIsCopied(true)) // Set copied state to true  
+        .catch((err) => console.error("Failed to copy session code", err));  
+    }  
+  };  
   
   return (  
     <div className="flex min-h-screen flex-col text-gray-900" style={{ backgroundColor: "transparent" }}>  
@@ -175,12 +206,18 @@ function App() {
           </div>  
         ) : (  
           <div className="mb-4 flex flex-col items-center justify-center">  
-            <h2>{isNewSession ? "Your Session Code:" : "Joined Session:"}</h2>  
-            <p>{sessionKey}</p>  
+            <h2 className="text-white font-bold">{isNewSession ? "Your Session Code:" : "Joined Session:"}</h2>  
+            <div className="flex items-center">  
+              <p className="mr-2">{sessionKey}</p>  
+              <Button onClick={copyToClipboard} className="flex items-center">  
+                {isCopied ? <Check className="mr-1" /> : <Clipboard className="mr-1" />}  
+                {isCopied ? "Copied" : "Copy"}  
+              </Button>  
+            </div>  
             {!isSessionReady ? (  
-              <p>Waiting for partner to join...</p>  
+              <p className="text-white font-bold">Waiting for partner to join...</p>  
             ) : (  
-              <p>  
+              <p className="text-white font-bold">  
                 Session Active: You speak{" "}  
                 {SUPPORTED_LANGUAGES.find((l) => l.code === userLang)?.name}, and your partner speaks{" "}  
                 {SUPPORTED_LANGUAGES.find((l) => l.code === partnerLang)?.name}.  

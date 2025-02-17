@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from aiohttp import web  
 from azure.identity import DefaultAzureCredential  
 from azure.core.credentials import AzureKeyCredential  
-from rtmt_wip import RTMiddleTier  
+from rtmt import RTMiddleTier  
   
 if __name__ == "__main__":  
     load_dotenv()  
@@ -16,7 +16,6 @@ if __name__ == "__main__":
     app = web.Application()  
     rtmt = RTMiddleTier(llm_endpoint, llm_deployment, credentials)  
     rtmt.attach_to_app(app, handshake_path="/handshake", realtime_path="/realtime")  
-    # rtmt.attach_to_app(app,  path="/realtime")  
 
     app.add_routes([web.get('/', lambda _: web.FileResponse('./static/index.html'))])  
     app.router.add_static('/', path='./static', name='static')  
