@@ -2,7 +2,6 @@ import os
 import aiohttp  
 import asyncio  
 import json  
-import yaml  
 import logging  
 from enum import Enum  
 from typing import Any, Callable, Optional  
@@ -40,91 +39,102 @@ class Tool:
         self.schema = schema  
   
 class RTMiddleTier:  
+    tools: dict[str, dict[str, Tool]] = {}  
+  
+    temperature: Optional[float] = None  
+    max_tokens: Optional[int] = None  
+    disable_audio: Optional[bool] = None  
+  
     def __init__(self, endpoint: str, deployment: str, credentials: AzureKeyCredential | DefaultAzureCredential):  
-        self.sessions = {}  # Track sessions  
         self.endpoint = endpoint  
         self.deployment = deployment  
         self.key = credentials.key if isinstance(credentials, AzureKeyCredential) else None  
         self._token_provider = get_bearer_token_provider(credentials, "https://cognitiveservices.azure.com/.default") if not self.key else None  
+        self.system_prompt = """You are an AI translator to help translate conversations between two people speaking English and Vietnamese. When a person speaks English, you translate to Vietnamese, and when a person speaks Vietnamese, then translate to English."""  
   
-    async def _connect_to_openai(self, session_key: str):  
-        session = self.sessions[session_key]  
-        langs = list(session["languages"].values())  
-        system_prompt = f"Translate between {langs[0]} and {langs[1]}. Maintain context."  
-  
-        params = {"api-version": "2024-10-01-preview", "deployment": self.deployment}  
-        if self._token_provider:  
-            headers = {"Authorization": f"Bearer {self._token_provider()}"}  
-        else:  
-            headers = {"api-key": self.key}    
-        async with aiohttp.ClientSession() as session:  
-            target_ws = await session.ws_connect(  
-                f"{self.endpoint}/openai/realtime",  
-                headers=headers,  
-                params=params  
-            )  
-            await target_ws.send_json({  
-                "type": "session.update",  
-                "session": {"instructions": system_prompt}  
-            })  
-            return target_ws  
-  
-    async def _forward_messages(self, client_ws: web.WebSocketResponse, session_key: str):  
-        session = self.sessions[session_key]  
-  
-        if not session["target_ws"]:  
-            session["target_ws"] = await self._connect_to_openai(session_key)  
-  
-        async def from_client_to_server():  
-            async for msg in client_ws:  
-                if msg.type == aiohttp.WSMsgType.TEXT:  
-                    await self._process_client_message(msg, client_ws, session)  
-  
-        async def from_server_to_client():  
-            async for msg in session["target_ws"]:  
-                if msg.type == aiohttp.WSMsgType.TEXT:  
-                    await self._broadcast_to_clients(msg, client_ws, session)  
-  
-        await asyncio.gather(from_client_to_server(), from_server_to_client())  
-  
-    async def _process_client_message(self, msg, client_ws, session):  
+    async def _process_message_to_server(self, msg: str, ws: web.WebSocketResponse) -> Optional[str]:  
         message = json.loads(msg.data)  
-        if message["type"] == "conversation.item.input_audio_transcription.completed":  
-            source_lang = session["languages"][id(client_ws)]  
-            target_lang = next((lang for cid, lang in session["languages"].items() if cid != id(client_ws)), None)  
+        updated_message = msg.data  
+        if message is not None:  
+            match message["type"]:  
+                case "session.update":  
+                    session = message["session"]  
+                    session["instructions"] = self.system_prompt  
+                    if self.temperature is not None:  
+                        session["temperature"] = self.temperature  
+                    if self.max_tokens is not None:  
+                        session["max_response_output_tokens"] = self.max_tokens  
+                    if self.disable_audio is not None:  
+                        session["disable_audio"] = self.disable_audio  
+                    updated_message = json.dumps(message)  
+        return updated_message  
   
-            message["transcript"] = f"Translate from {source_lang} to {target_lang}: {message['transcript']}"  
-            await session["target_ws"].send_json(message)  
+    async def _process_message_to_client(self, msg: str, ws: web.WebSocketResponse, target_ws: web.WebSocketResponse) -> Optional[str]:  
+        message = json.loads(msg.data)  
+        updated_message = msg.data  
+        if message is not None:  
+            if "delta" not in message:  
+                if message["type"] == "error":  
+                    logger.error(message)  
+            match message["type"]:  
+                case "session.created":  
+                    logger.info("session created")  
+                    session = message["session"]  
+                    session["instructions"] = ""  
+                    session["tools"] = []  
+                    session["tool_choice"] = "none"  
+                    session["max_response_output_tokens"] = None  
+                    updated_message = json.dumps(message)  
+        return updated_message  
   
-    async def _broadcast_to_clients(self, msg, sender_ws, session):  
-        translated_message = json.loads(msg.data)  
-        for client in session["clients"]:  
-            if client != sender_ws:  
-                await client.send_json(translated_message)  
+    async def _forward_messages(self, ws: web.WebSocketResponse):  
+        async with aiohttp.ClientSession(base_url=self.endpoint) as session:  
+            params = {"api-version": "2024-10-01-preview", "deployment": self.deployment}  
+            headers = {}  
+            if "x-ms-client-request-id" in ws.headers:  
+                headers["x-ms-client-request-id"] = ws.headers["x-ms-client-request-id"]  
+            if self.key is not None:  
+                headers = {"api-key": self.key}  
+            else:  
+                headers = {"Authorization": f"Bearer {self._token_provider()}"}  
+  
+            async with session.ws_connect("/openai/realtime", headers=headers, params=params) as target_ws:  
+                async def from_client_to_server():  
+                    async for msg in ws:  
+                        if msg.type == aiohttp.WSMsgType.TEXT:  
+                            new_msg = await self._process_message_to_server(msg, ws)  
+                            if new_msg is not None:  
+                                await target_ws.send_str(new_msg)  
+                        else:  
+                            logger.error("Unexpected message type from client: %s", msg.type)  
+  
+                async def from_server_to_client():  
+                    async for msg in target_ws:  
+                        if msg.type == aiohttp.WSMsgType.TEXT:  
+                            new_msg = await self._process_message_to_client(msg, ws, target_ws)  
+                            if new_msg is not None:  
+                                await ws.send_str(new_msg)  
+                        else:  
+                            logger.error("Unexpected message type from server: %s", msg.type)  
+  
+                try:  
+                    await asyncio.gather(from_client_to_server(), from_server_to_client())  
+                except ConnectionResetError:  
+                    logger.error("ConnectionResetError occurred")  
   
     async def _handler_with_session_key(self, request: web.Request):  
         session_key = request.query.get("session_state_key", "default")  
         lang = request.query.get("lang", "en")  
   
-        if session_key not in self.sessions:  
-            self.sessions[session_key] = {  
-                "clients": [],  
-                "target_ws": None,  
-                "languages": {}  
-            }  
-        session = self.sessions[session_key]  
-  
         ws = web.WebSocketResponse()  
         await ws.prepare(request)  
-        session["clients"].append(ws)  
-        session["languages"][id(ws)] = lang  
   
         try:  
-            await self._forward_messages(ws, session_key)  
+            await self._forward_messages(ws)  
         finally:  
-            session["clients"].remove(ws)  
-            if not session["clients"]:  
-                del self.sessions[session_key]  
+            await ws.close()  
+  
+        return ws  
   
     def attach_to_app(self, app, path):  
         app.router.add_get(path, self._handler_with_session_key)  
