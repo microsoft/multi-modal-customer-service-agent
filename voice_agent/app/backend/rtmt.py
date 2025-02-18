@@ -147,8 +147,6 @@ class RTMiddleTier:
         if intent in self.agent_names and intent != self.current_agent.get('name'):  
             self.target_agent_name = intent
             logger.info("Switching to new agent: %s", self.target_agent_name)  
-            self.transfer_conversation = True  
-
             
 
     async def _attach_instruction(self, server_ws):
@@ -159,7 +157,8 @@ class RTMiddleTier:
                     "type": "server_vad",
                             "threshold": 0.5,
                             "prefix_padding_ms": 300,
-                            "silence_duration_ms": 200
+                            "silence_duration_ms": 200,
+                            "create_response": False
 
                 },
                 "input_audio_transcription": {
@@ -303,7 +302,14 @@ class RTMiddleTier:
                         # todo: extend the conversation history when transfer conversation so that next agent has more context. Last request might not be sufficient
                         # Trigger intent detection
                         if self.use_classification_model:   
-                            asyncio.create_task(self._detect_intent_change())  
+                            await self._detect_intent_change()
+                            if self.target_agent_name is not None:
+                                self.current_agent = next((agent for agent in self.agents if agent.get('name') == self.target_agent_name), None)
+                                self.set_current_agent_tools()
+                                self.target_agent_name = None
+                                await self._reinitialize_state(server_ws)
+                            
+                            await server_ws.send_json({'type': 'response.create'})                        
 
                     # Retain only the last n turnss  
                     if len(self.history) > self.max_history_length:  
@@ -358,8 +364,6 @@ class RTMiddleTier:
 
         return updated_message
     async def _reinitialize_state(self, target_ws: web.WebSocketResponse):
-        logger.info("cancelling current response")
-        await target_ws.send_json({"type": "response.cancel"})
         logger.info("Reinitializing session state")  
         server_msg = {"type":"input_audio_buffer.clear"}
         logger.info("Cleared audio buffer")  
@@ -393,23 +397,9 @@ class RTMiddleTier:
                 async def from_server_to_client():
                     async for msg in target_ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
-                            new_msg = await self._process_message_to_client(msg, ws, target_ws)
-                            
-                            if new_msg is not None and self.target_agent_name is None:
-
+                            new_msg = await self._process_message_to_client(msg, ws, target_ws)                  
+                            if new_msg is not None:
                                 await ws.send_str(new_msg)
-                            else:
-                                if self.target_agent_name is not None:
-
-                                    self.current_agent = next((agent for agent in self.agents if agent.get('name') == self.target_agent_name), None)
-                                    self.set_current_agent_tools()
-                                    self.transfer_conversation = False
-                                    self.target_agent_name = None
-                                    await self._reinitialize_state(target_ws)
-
-                                    await target_ws.send_json({'type': 'response.create'})
-
-
                         else:
                             logger.error("Unexpected message type from server: %s", msg.type)  
 
