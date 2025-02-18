@@ -68,7 +68,18 @@ export default function useRealTime({
   onReceivedInputAudioTranscriptionCompleted,  
   onReceivedError,  
 }: Parameters) {  
-  const wsEndpoint = `/realtime?session_key=${sessionKey}&user_lang=${user_lang}`;  
+    function getOrCreateClientid() {
+        let clientId = localStorage.getItem("clientId");
+        if (!clientId) {
+            clientId = crypto.randomUUID();
+        localStorage.setItem("clientId", clientId);
+        }
+        return clientId;
+    }
+    
+    const clientId = getOrCreateClientid();
+
+  const wsEndpoint = `/realtime?session_key=${sessionKey}&user_lang=${user_lang}&client_id=${clientId}`;  
   const { sendJsonMessage } = useWebSocket(wsEndpoint, {  
     onOpen: () => onWebSocketOpen?.(),  
     onClose: () => onWebSocketClose?.(),  

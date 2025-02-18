@@ -1,16 +1,12 @@
-import yaml  
-from typing import Any  
 import os  
-from sqlalchemy.ext.declarative import declarative_base  
-from sqlalchemy.orm import sessionmaker, relationship  
 from datetime import datetime  
 import random  
 from dotenv import load_dotenv  
 from openai import AsyncAzureOpenAI  
 from pathlib import Path  
+from aiohttp import web  
+import numpy as np
 import json  
-from scipy import spatial  # for calculating vector similarities for search  
-# Load YAML file  
 import yaml
 # Load YAML file  
 import asyncio
@@ -24,10 +20,48 @@ import os
 import redis
 import pickle
 import base64
-from typing import Dict
+from typing import Any, Callable, Optional, Dict, List  
+from enum import Enum  
+import struct  
+from typing import List  
 
+class ToolResultDirection(Enum):  
+    TO_SERVER = 1  
+    TO_CLIENT = 2  
+  
+class ToolResult:  
+    def __init__(self, text: str, destination: ToolResultDirection):  
+        self.text = text  
+        self.destination = destination  
+  
+    def to_text(self) -> str:  
+        if self.text is None:  
+            return ""  
+        return self.text if isinstance(self.text, str) else json.dumps(self.text)  
+  
+class Tool:  
+    def __init__(self, target: Any, schema: Any):  
+        self.target = target  
+        self.schema = schema  
+  
+class Session:  
+    def __init__(self):  
+        self.client_language_mapping: Dict[str, str] = {}
+        self.lock = asyncio.Lock()  
+        self.user_languages: List[str] = []   
+        self.system_prompt: Optional[str] = None  
+        self.ready = False  
+        # Queues for audio data and for non–audio commands that need sending to OpenAI.  
+        self.audio_queue: asyncio.Queue = asyncio.Queue()  
+        self.outgoing_queue: asyncio.Queue = asyncio.Queue()  
 
+        # For buffering messages coming from OpenAI.  
+        # Each client gets its own output queue so it “subscribes” to the responses.  
+        self.client_output_queues: Dict[web.WebSocketResponse, asyncio.Queue] = {}  
 
+        # Background tasks (kept so we start only one Azure connection and one mixer per session)  
+        self.azure_task: Optional[asyncio.Task] = None  
+        self.mixer_task: Optional[asyncio.Task] = None          
 class SessionState:  
     def __init__(self): 
         # Redis configuration 
@@ -54,3 +88,28 @@ class SessionState:
         else:
             self.session_store[key]=value
           
+
+  
+def mix_audio_buffers(buffers: List[bytes]) -> bytes:  
+    """Mixes a list of raw PCM 16-bit single-channel byte sequences by summing them sample-by-sample,  
+    clipping the results to the 16-bit signed integer range, and returning the resulting 16-bit PCM bytes."""  
+      
+    if not buffers:  
+        return b""  
+      
+    # Convert each buffer into a NumPy array of signed 16-bit integers.  
+    np_buffers = [np.frombuffer(b, dtype=np.int16) for b in buffers]  
+      
+    # Find the length of the shortest buffer and truncate others to this length.  
+    min_len = min(len(b) for b in np_buffers)  
+    np_buffers = [b[:min_len] for b in np_buffers]  
+      
+    # Stack arrays vertically and sum along the first axis (sample-by-sample sum).  
+    sum_array = np.sum(np.vstack(np_buffers), axis=0)  
+      
+    # Clip the results to the 16-bit signed integer range.  
+    clipped_array = np.clip(sum_array, -32768, 32767).astype(np.int16)  
+      
+    # Convert the clipped array back to bytes.  
+    return clipped_array.tobytes()  
+  

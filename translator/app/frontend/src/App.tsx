@@ -89,7 +89,7 @@ function App() {
   } = useRealTime({  
     sessionKey: isSessionReady ? sessionKey : "",  
     user_lang: userLang,  
-    enableInputAudioTranscription: true,  
+    enableInputAudioTranscription: false,  
     onWebSocketOpen: () => console.log("WebSocket connection opened"),  
     onWebSocketClose: () => console.log("WebSocket connection closed"),  
     onWebSocketError: (event) => console.error("WebSocket error:", event),  
