@@ -1,15 +1,3 @@
-export type GroundingFile = {  
-    id: string;  
-    name: string;  
-    content: string;  
-  };  
-    
-  export type HistoryItem = {  
-    id: string;  
-    transcript: string;  
-    groundingFiles: GroundingFile[];  
-  };  
-    
   export type SessionUpdateCommand = {  
     type: "session.update";  
     session: {  

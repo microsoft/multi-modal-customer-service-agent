@@ -80,7 +80,7 @@ class RTMiddleTier:
                 else:  
                     is_ready = True  
                     status = "ok"  
-                logger.info("status polling, my lang: %s, partner_lang: %s", user_lang, partner_lang)  
+                logger.debug("status polling, my lang: %s, partner_lang: %s", user_lang, partner_lang)  
                 return web.json_response({"status": status, "session_key": session_key, "ready": is_ready, "partner_lang": partner_lang})  
         else:  
             return web.json_response({"status": "error", "error": "Invalid action"}, status=400)  
@@ -95,7 +95,7 @@ class RTMiddleTier:
                     logger.error(message)  
             match message.get("type"):  
                 case "session.created":  
-                    logger.info("session created")  
+                    logger.debug("session created")  
                     session_info = message.get("session", {})  
                     session_info["instructions"] = ""  
                     session_info["tools"] = []  
@@ -106,7 +106,7 @@ class RTMiddleTier:
 
     async def _process_message_to_server(self, msg: aiohttp.WSMessage, system_prompt: str) -> Optional[str]:  
         message = json.loads(msg.data)  
-        logger.info("message type sent to server: %s", message.get("type"))  
+        logger.debug("message type sent to server: %s", message.get("type"))  
         updated_message = msg.data  
         if message is not None:  
             match message.get("type"):  
@@ -135,10 +135,10 @@ class RTMiddleTier:
         try:  
             while True:  
                 message = await client_queue.get()  
-                logger.info("message sent back to client with language %s", user_lang)
+                logger.debug("message sent back to client with language %s", user_lang)
                 await ws.send_str(message)  
         except asyncio.CancelledError:  
-            logger.info("Output handler for client cancelled")  
+            logger.debug("Output handler for client cancelled")  
         except Exception as e:  
             logger.error("Error in client output handler: %s", e)  
 

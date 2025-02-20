@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
@@ -37,4 +38,5 @@
     "typescript": "^5.5.3",
     "vite": "^5.4.8"
   }
+  
 }

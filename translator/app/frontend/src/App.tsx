@@ -54,7 +54,8 @@ function App() {
   const [isCopied, setIsCopied] = useState(false); // State to track copy status  
   
   const { stop: stopAudioPlayer, reset: resetAudioPlayer, play: playAudio } = useAudioPlayer();  
-  
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || ""; // Default to empty for relative paths in development.  
+  console.log("Backend URL:", BACKEND_URL); 
   // Polling to check if the session is ready  
   useEffect(() => {  
     if (!sessionKey || isSessionReady) return;  
@@ -62,9 +63,9 @@ function App() {
     const intervalId = setInterval(async () => {  
       try {  
         const resp = await fetch(  
-          `/handshake?action=status&session_key=${encodeURIComponent(sessionKey)}&user_lang=${encodeURIComponent(userLang)}`  
+            `${BACKEND_URL}/handshake?action=status&session_key=${encodeURIComponent(sessionKey)}&user_lang=${encodeURIComponent(userLang)}`  
         );  
-        const data = await resp.json();  
+            const data = await resp.json();  
         if (data.status === "ok" && data.ready) {  
           setIsSessionReady(true);  
           if (data.partner_lang) {  

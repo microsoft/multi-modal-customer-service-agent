@@ -20,4 +20,4 @@ if __name__ == "__main__":
     app.add_routes([web.get('/', lambda _: web.FileResponse('./static/index.html'))])  
     app.router.add_static('/', path='./static', name='static')  
   
-    web.run_app(app, host='localhost', port=8765)  
+    web.run_app(app, host='0.0.0.0', port=8765)  

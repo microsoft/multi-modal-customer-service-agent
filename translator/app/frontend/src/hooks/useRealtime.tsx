@@ -78,8 +78,11 @@ export default function useRealTime({
     }
     
     const clientId = getOrCreateClientid();
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || ""; // Default to empty for relative paths in development.  
+console.log("Backend URL:", BACKEND_URL); 
 
-  const wsEndpoint = `/realtime?session_key=${sessionKey}&user_lang=${user_lang}&client_id=${clientId}`;  
+const wsEndpoint = `${BACKEND_URL}/realtime?session_key=${sessionKey}&user_lang=${user_lang}&client_id=${clientId}`;  
+    
   const { sendJsonMessage } = useWebSocket(wsEndpoint, {  
     onOpen: () => onWebSocketOpen?.(),  
     onClose: () => onWebSocketClose?.(),  

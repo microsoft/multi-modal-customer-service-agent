@@ -1,7 +1,7 @@
 # Backend
 **/*.pyc
-**/.env
-
+# **/.env
+**/.venv
 ## Will be built by multistage docker build
 **/static
 
