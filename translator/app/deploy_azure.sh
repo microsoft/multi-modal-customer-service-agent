@@ -24,24 +24,23 @@ az acr build --registry $CONTAINER_REGISTRY --image $IMAGE_NAME --file ./Dockerf
   
 # Create a container environment  
 az containerapp env create --name $CONTAINER_ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION  
-  
 # Deploy the application and get its URL  
-app_service_output=$(az containerapp create \  
-  --name translator-assistant \  
-  --resource-group $RESOURCE_GROUP \  
-  --environment $CONTAINER_ENVIRONMENT \  
-  --image $CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME \  
-  --min-replicas 1 --max-replicas 1 \  
-  --target-port 8765 \  
-  --ingress external \  
-  --registry-server $CONTAINER_REGISTRY.azurecr.io \  
-  --query properties.configuration.ingress.fqdn \  
-  --output tsv)  
+app_service_output=$(az containerapp create \
+  --name translator-assistant \
+  --resource-group $RESOURCE_GROUP \
+  --environment $CONTAINER_ENVIRONMENT \
+  --image $CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME \
+  --min-replicas 1 --max-replicas 1 \
+  --target-port 8765 \
+  --ingress external \
+  --registry-server $CONTAINER_REGISTRY.azurecr.io \
+  --query properties.configuration.ingress.fqdn \
+  --output tsv)
   
 # Check if the deployment was successful and the URL was retrieved  
-if [ -z "$app_service_output" ]; then  
-  echo "Failed to retrieve the URL of the translator-assistant service."  
-  exit 1  
-else  
-  echo "Successfully deployed translator-assistant with URL: https://$app_service_output"  
-fi  
+if [ -z "$app_service_output" ]; then
+  echo "Failed to retrieve the URL of the translator-assistant service."
+  exit 1
+else
+  echo "Successfully deployed translator-assistant with URL: https://$app_service_output"
+fi
