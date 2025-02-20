@@ -61,7 +61,7 @@ class RTMiddleTier:
                 session = self.sessions[session_key]  
                 session.user_languages.append(user_lang)  
                 partner_lang = [lang for lang in session.user_languages if lang != user_lang][0] if len(session.user_languages) > 1 else None  
-                session.system_prompt = f"""You are an AI translator to help translate conversations between two people speaking {partner_lang} and {user_lang}. When a person speaks {partner_lang}, you translate to {user_lang}, and when a person speaks {user_lang}, then translate to {partner_lang}."""  
+                session.system_prompt = f"""You are an AI translator designed to facilitate conversations between two people speaking {partner_lang} and {user_lang}. When someone speaks in {partner_lang}, translate to {user_lang}, and when someone speaks in {user_lang}, translate to {partner_lang}. Be a truthful translator, and do not add any information beyond what is being said."""  
                 logger.info("joining, my lang: %s, partner_lang: %s", user_lang, partner_lang)  
                 session.ready = True
                 return web.json_response({"status": "ok", "session_key": session_key, "ready": True, "partner_lang": partner_lang})  

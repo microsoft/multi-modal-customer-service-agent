@@ -8,45 +8,43 @@ import useAudioPlayer from "@/hooks/useAudioPlayer";
 import logo from "./assets/logo.svg";  
   
 const SUPPORTED_LANGUAGES = [  
-  { code: "en", name: "English" },  
-  { code: "es", name: "Spanish" },  
-  { code: "fr", name: "French" },  
-  { code: "vi", name: "Vietnamese" },  
-  { code: "de", name: "German" },  
-  { code: "ja", name: "Japanese" }, 
-  { code: "ko", name: "Korean" },
-{ code: "zh", name: "Chinese" },
-{ code: "pt", name: "Portuguese" },
-{ code: "ar", name: "Arabic" },
-{ code: "ru", name: "Russian" },
-{ code: "it", name: "Italian" },
-{ code: "tr", name: "Turkish" },
-{ code: "pl", name: "Polish" },
-{ code: "nl", name: "Dutch" },
-{ code: "sv", name: "Swedish" },
-{ code: "da", name: "Danish" },
-{ code: "fi", name: "Finnish" },
-{ code: "no", name: "Norwegian" },
-{ code: "cs", name: "Czech" },
-{ code: "hu", name: "Hungarian" },
-{ code: "ro", name: "Romanian" },
-{ code: "sk", name: "Slovak" },
-{ code: "bg", name: "Bulgarian" },
-{ code: "el", name: "Greek" },
-{ code: "th", name: "Thai" },
-{ code: "id", name: "Indonesian" },
-{ code: "hi", name: "Hindi" },
-{ code: "he", name: "Hebrew" },
-{ code: "ms", name: "Malay" },
-
-
+  { name: "English" },  
+  { name: "Spanish" },  
+  { name: "French" },  
+  { name: "Vietnamese" },  
+  { name: "German" },  
+  { name: "Japanese" },  
+  { name: "Korean" },  
+  { name: "Chinese" },  
+  { name: "Portuguese" },  
+  { name: "Arabic" },  
+  { name: "Russian" },  
+  { name: "Italian" },  
+  { name: "Turkish" },  
+  { name: "Polish" },  
+  { name: "Dutch" },  
+  { name: "Swedish" },  
+  { name: "Danish" },  
+  { name: "Finnish" },  
+  { name: "Norwegian" },  
+  { name: "Czech" },  
+  { name: "Hungarian" },  
+  { name: "Romanian" },  
+  { name: "Slovak" },  
+  { name: "Bulgarian" },  
+  { name: "Greek" },  
+  { name: "Thai" },  
+  { name: "Indonesian" },  
+  { name: "Hindi" },  
+  { name: "Hebrew" },  
+  { name: "Malay" },  
 ];  
   
 function App() {  
   const [isRecording, setIsRecording] = useState(false);  
   const [sessionKey, setSessionKey] = useState("");  
   const [isNewSession] = useState(true);  
-  const [userLang, setUserLang] = useState("en");  
+  const [userLang, setUserLang] = useState("English");  
   const [partnerLang, setPartnerLang] = useState("");  
   const [isSessionReady, setIsSessionReady] = useState(false);  
   const [connectionError, setConnectionError] = useState("");  
@@ -55,7 +53,8 @@ function App() {
   
   const { stop: stopAudioPlayer, reset: resetAudioPlayer, play: playAudio } = useAudioPlayer();  
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || ""; // Default to empty for relative paths in development.  
-  console.log("Backend URL:", BACKEND_URL); 
+  console.log("Backend URL:", BACKEND_URL);  
+  
   // Polling to check if the session is ready  
   useEffect(() => {  
     if (!sessionKey || isSessionReady) return;  
@@ -63,9 +62,9 @@ function App() {
     const intervalId = setInterval(async () => {  
       try {  
         const resp = await fetch(  
-            `${BACKEND_URL}/handshake?action=status&session_key=${encodeURIComponent(sessionKey)}&user_lang=${encodeURIComponent(userLang)}`  
+          `${BACKEND_URL}/handshake?action=status&session_key=${encodeURIComponent(sessionKey)}&user_lang=${encodeURIComponent(userLang)}`  
         );  
-            const data = await resp.json();  
+        const data = await resp.json();  
         if (data.status === "ok" && data.ready) {  
           setIsSessionReady(true);  
           if (data.partner_lang) {  
@@ -83,11 +82,7 @@ function App() {
     return () => clearInterval(intervalId);  
   }, [sessionKey, isSessionReady]);  
   
-  const {  
-    startSession,  
-    addUserAudio,  
-    inputAudioBufferClear,  
-  } = useRealTime({  
+  const { startSession, addUserAudio, inputAudioBufferClear } = useRealTime({  
     sessionKey: isSessionReady ? sessionKey : "",  
     user_lang: userLang,  
     enableInputAudioTranscription: false,  
@@ -187,7 +182,7 @@ function App() {
               className="p-2 border rounded w-full mb-4"  
             >  
               {SUPPORTED_LANGUAGES.map((lang) => (  
-                <option key={lang.code} value={lang.code}>  
+                <option key={lang.name} value={lang.name}>  
                   {lang.name}  
                 </option>  
               ))}  
@@ -220,8 +215,8 @@ function App() {
             ) : (  
               <p className="text-white font-bold">  
                 Session Active: You speak{" "}  
-                {SUPPORTED_LANGUAGES.find((l) => l.code === userLang)?.name}, and your partner speaks{" "}  
-                {SUPPORTED_LANGUAGES.find((l) => l.code === partnerLang)?.name}.  
+                {userLang}, and your partner speaks{" "}  
+                {partnerLang}.  
               </p>  
             )}  
             <Button  
