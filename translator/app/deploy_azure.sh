@@ -23,7 +23,7 @@ az acr login --name $CONTAINER_REGISTRY
 az acr build --registry $CONTAINER_REGISTRY --image $IMAGE_NAME --file ./Dockerfile .  
   
 # Create a container environment  
-az containerapp env create --name $CONTAINER_ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION  
+az containerapp env create --name $CONTAINER_ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION
 # Deploy the application and get its URL  
 app_service_output=$(az containerapp create \
   --name translator-assistant \
