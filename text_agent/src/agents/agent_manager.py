@@ -60,7 +60,6 @@ class Agent_Runner:
             self.active_agent = next(agent for agent in self.agents if agent.name == active_agent_name)  
             conversation = session.get("conversation")  
             print("session found, active agent:", active_agent_name)
-            print("conversation:", conversation)
         else:  
             
             self.active_agent = next(agent for agent in self.agents if agent.name == 'generic_agent') 
@@ -70,7 +69,7 @@ class Agent_Runner:
           
         if get_help:  
             self.revaluate_agent_assignment(assistant_response)  
-            conversation += self.active_agent.init_history  
+            conversation=self.active_agent.init_history+conversation
             get_help, conversation, assistant_response = self.active_agent.run(user_input=user_input, conversation=conversation)
             if get_help: # if the agent still needs help even after re-assignment, then it's time to assign to the default agent
                 self.active_agent = self.default_agent

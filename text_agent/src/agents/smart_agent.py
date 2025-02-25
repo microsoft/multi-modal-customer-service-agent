@@ -163,6 +163,7 @@ class Smart_Agent():
             return False, self.init_history, self.init_history[1]["content"]
         if conversation is None: #if no history return init message
             conversation = self.init_history.copy()
+
         conversation.append({"role": "user", "content": user_input})
         request_help = False
         if len(self.function_spec)>0:
@@ -194,22 +195,43 @@ class Smart_Agent():
                         print()                                    
                         # verify function exists
                         if function_name not in self.functions_list:
-                            # raise Exception("Function " + function_name + " does not exist")
-                            conversation.pop()
-                            continue
+                            raise Exception("Function " + function_name + " does not exist in the list \n" + str(self.functions_list.keys()))
+
                         function_to_call = self.functions_list[function_name]
                         
                         # verify function has correct number of arguments
                         function_args = json.loads(tool_call.function.arguments)
 
                         if self.check_args(function_to_call, function_args) is False:
-                            # raise Exception("Invalid number of arguments for function: " + function_name)
-                            conversation.pop()
-                            continue
+                            raise Exception("Invalid number of arguments for function: " + function_name)
+                            # conversation.pop()
+                            # continue
 
                         
                         # print("beginning function call")
                         function_response = str(function_to_call(**function_args))
+                        if function_name == "expand_for_detail":
+                            # Inject the expanded detail into the system message
+                            topic_name = function_args["topic_name"]
+                            print("topic_name:", topic_name)
+                            print("conversation ", conversation)
+                            if conversation and conversation[0]["role"] == "system":
+                                
+                                original_content = conversation[0]["content"]
+                                replacement_text = f"- **{topic_name}** *(expand for detail)*"
+                                if replacement_text in original_content:
+                                    updated_content = original_content.replace(
+                                        replacement_text,
+                                        f"- **Detail of {topic_name}**\n{function_response}\n"
+                                    )
+                                    print("Updated system message:\n", updated_content)
+                                    #update the system message with the expanded detail then rerun
+                                    conversation[0]["content"] = function_response
+                                    conversation.pop() #remove the last message 
+                                    continue 
+                                else:
+                                    print("No match found for replacement text")
+                        
 
                         if function_name=="get_help": #scenario where the agent asks for help
                             summary_conversation = []
