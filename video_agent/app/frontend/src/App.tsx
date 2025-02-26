@@ -7,19 +7,22 @@ import StatusMessage from "@/components/ui/status-message";
 import useRealTime from "@/hooks/useRealtime";  
 import useAudioRecorder from "@/hooks/useAudioRecorder";  
 import useAudioPlayer from "@/hooks/useAudioPlayer";  
+import { sendFrame, useVideoStream } from '@/hooks/useVideoStream';  
+
 import { GroundingFile, ToolResult } from "./types";  
 import logo from "./assets/logo.svg";  
   
 function App() {  
   const [isRecording, setIsRecording] = useState(false);  
   const [isVideoOn, setIsVideoOn] = useState(false); // Video state  
-  const [isScreenSharing, setIsScreenSharing] = useState(false); // Screen sharing state  
+  const [isScreenSharing, setIsScreenSharing] = useState(false); // Screen sharing state 
+  
+  
   const [groundingFiles, setGroundingFiles] = useState<GroundingFile[]>([]);  
   const [selectedFile, setSelectedFile] = useState<GroundingFile | null>(null);  
   const [inputText, setInputText] = useState(""); // State for the text box input  
   
   const videoRef = useRef<HTMLVideoElement>(null); // Reference to video element  
-  const mediaStreamRef = useRef<MediaStream | null>(null); // Media stream reference  
   
   const { startSession, addUserMessage, addUserAudio, inputAudioBufferClear } = useRealTime({  
     enableInputAudioTranscription: true,  
@@ -63,135 +66,38 @@ function App() {
     }  
   };  
   
-  const videoActiveRef = useRef(false);  
-  
-  const onToggleVideo = async () => {  
-    if (!isVideoOn) {  
-      videoActiveRef.current = true;  
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });  
-      mediaStreamRef.current = stream;  
-      if (videoRef.current) {  
-        videoRef.current.srcObject = stream;  
-        await videoRef.current.play();  
-      }  
-  
-      const sendVideoFrames = async () => {  
-        const videoCanvas = document.createElement("canvas");  
-        const videoContext = videoCanvas.getContext("2d");  
-        if (!videoContext) return;  
-  
-        const sessionKey = localStorage.getItem("session_state_key");  
-        console.log("session_state_key in video", sessionKey);  
-  
-        const intervalId = setInterval(async () => {  
-          if (!videoActiveRef.current) {  
-            clearInterval(intervalId);  
-            return;  
-          }  
-          if (videoRef.current) {  
-            videoCanvas.width = videoRef.current.videoWidth;  
-            videoCanvas.height = videoRef.current.videoHeight;  
-            videoContext.drawImage(  
-              videoRef.current,  
-              0,  
-              0,  
-              videoCanvas.width,  
-              videoCanvas.height  
-            );  
-            const frameData = videoCanvas.toDataURL("image/jpeg");  
-            await fetch("/api/upload_video_frame", {  
-              method: "POST",  
-              headers: { "Content-Type": "application/json" },  
-              body: JSON.stringify({  
-                frame: frameData,  
-                session_state_key: sessionKey,  
-              }),  
-            });  
-          }  
-        }, 900);  
-      };  
-  
-      sendVideoFrames();  
-      setIsVideoOn(true);  
-    } else {  
-      videoActiveRef.current = false;  
-      if (mediaStreamRef.current) {  
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());  
-      }  
-      if (videoRef.current) {  
-        videoRef.current.pause();  
-        videoRef.current.srcObject = null;  
-      }  
-      setIsVideoOn(false);  
+  const { videoRef: cameraRef, start: startCamera, stop: stopCamera } = useVideoStream({  
+    startMedia: () => navigator.mediaDevices.getUserMedia({ video: true }),  
+    onFrame: (frameData) => {  
+      sendFrame(frameData);  
     }  
+  });  
+  
+  const { videoRef: screenRef, start: startScreen, stop: stopScreen } = useVideoStream({  
+    startMedia: () => navigator.mediaDevices.getDisplayMedia({ video: true }),  
+    onFrame: (frameData) => {  
+      sendFrame(frameData);  
+    }  
+  });  
+  
+  // Use these hooks for toggling video and screen sharing  
+  const onToggleVideo = () => {  
+    if (isVideoOn) {  
+      stopCamera();  
+    } else {  
+      startCamera();  
+    }  
+    setIsVideoOn(!isVideoOn);  
   };  
   
-  const screenSharingActiveRef = useRef(false); // Ref to track screen sharing state  
-  
-  const onToggleScreenSharing = async () => {  
-    if (!isScreenSharing) {  
-      // Start screen sharing  
-      screenSharingActiveRef.current = true; // Update the ref immediately  
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });  
-      mediaStreamRef.current = stream;  
-      if (videoRef.current) {  
-        videoRef.current.srcObject = stream;  
-        await videoRef.current.play();  
-      }  
-    
-      // Send screen frames to backend using an interval  
-      const sendScreenFrames = async () => {  
-        const videoCanvas = document.createElement("canvas");  
-        const videoContext = videoCanvas.getContext("2d");  
-        if (!videoContext) return;  
-    
-        const sessionKey = localStorage.getItem("session_state_key"); // Retrieve the session_state_key  
-        console.log("session_state_key in screen sharing", sessionKey);  
-    
-        const intervalId = setInterval(async () => {  
-          if (!screenSharingActiveRef.current) {  
-            // Check the ref instead of the state variable  
-            clearInterval(intervalId);  
-            return;  
-          }  
-          if (videoRef.current) {  
-            videoCanvas.width = videoRef.current.videoWidth;  
-            videoCanvas.height = videoRef.current.videoHeight;  
-            videoContext.drawImage(  
-              videoRef.current,  
-              0,  
-              0,  
-              videoCanvas.width,  
-              videoCanvas.height  
-            );  
-            const frameData = videoCanvas.toDataURL("image/jpeg");  
-            await fetch("/api/upload_video_frame", {  
-              method: "POST",  
-              headers: { "Content-Type": "application/json" },  
-              body: JSON.stringify({  
-                frame: frameData,  
-                session_state_key: sessionKey,  
-              }),  
-            });  
-          }  
-        }, 900); // Send frames every 900ms  
-      };  
-    
-      sendScreenFrames();  
-      setIsScreenSharing(true); // Update the state  
+  const onToggleScreenSharing = () => {  
+    if (isScreenSharing) {  
+      stopScreen();  
     } else {  
-      // Stop screen sharing  
-      screenSharingActiveRef.current = false; // Update the ref immediately  
-      if (mediaStreamRef.current) {  
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());  
-      }  
-      if (videoRef.current) {  
-        videoRef.current.pause();  
-        videoRef.current.srcObject = null;  
-      }  
-      setIsScreenSharing(false); // Update the state  
+      startScreen();  
     }  
-  };    
+    setIsScreenSharing(!isScreenSharing);  
+  };  
   const onSendText = () => {  
     if (inputText.trim()) {  
       addUserMessage(inputText.trim());  
@@ -260,6 +166,10 @@ function App() {
               </>  
             )}  
           </Button>  
+                {/* Attach the refs to the video elements */}  
+          {isVideoOn && <video ref={cameraRef} style={{ width: '300px', height: '200px' }} />}  
+          {isScreenSharing && <video ref={screenRef} style={{ width: '300px', height: '200px' }} />}  
+
           <StatusMessage isRecording={isRecording} />  
         </div>  
         <div className="mt-4 flex items-center space-x-4">  

@@ -12,6 +12,8 @@ from pathlib import Path
 import json  
 import logging
 import base64
+from typing import List  
+
 from scipy import spatial  # for calculating vector similarities for search  
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")  
 logger = logging.getLogger(__name__)  
@@ -57,44 +59,32 @@ client = AzureOpenAI(
   
 ## function to get information from image based on the command, given image base64 string
 
-def get_information_from_camera(base64_encoded_data ,command):
-    logger.info("calling to gpt-4o mini")
-
-    image_data = base64.b64decode(base64_encoded_data.split(",")[1])  
-    
-    # Define the file name for the output JPEG file  
-    file_name = "output_image.jpeg"  
-    
-    # Open a file in binary write mode and save the image data  
-    with open(file_name, "wb") as file:  
-        file.write(image_data)  
-        
-
-
-
-    response = client.chat.completions.create(
-        model=os.environ.get("AZURE_OPENAI_4O_MINI_DEPLOYMENT"),
-        messages=[
-            { "role": "system", "content": "You are a helpful assistant." },
-            { "role": "user", "content": [  
-                { 
-                    "type": "text", 
-                    "text": command 
-                },
-                { 
-                    "type": "image_url",
-                    "image_url": {
-                        "url": base64_encoded_data
-                    }
-                }
-            ] } 
-        ],
-        max_tokens=300 
-    )
-    result= response.choices[0].message.content
-    logger.info("get_information_from_camera result: %s", result)
-    return result
-
+def get_information_from_camera(base64_encoded_data: List[str], command: str) -> str:  
+    logger.info("calling to gpt-4o mini")  
+      
+    # Initialize the messages list with the system and initial user command  
+    messages = [  
+        { "role": "system", "content": "You are a helpful assistant." },  
+        { "role": "user", "content": [{"type": "text", "text": command}] }  
+    ]  
+      
+    # Loop through each base64-encoded image data and append it to the user content  
+    for image_data in base64_encoded_data:  
+        messages[1]["content"].append({  
+            "type": "image_url",  
+            "image_url": {"url": image_data}  
+        })  
+      
+    # Make the request to the model  
+    response = client.chat.completions.create(  
+        model=os.environ.get("AZURE_OPENAI_4O_MINI_DEPLOYMENT"),  
+        messages=messages,  
+        max_tokens=300  
+    )  
+      
+    result = response.choices[0].message.content  
+    logger.info("get_information_from_camera result: %s", result)  
+    return result  
 
 
 def get_embedding(text, model=emb_engine):  
