@@ -51,17 +51,16 @@ class Session:
         self.user_languages: List[str] = []   
         self.system_prompt: Optional[str] = None  
         self.ready = False  
-        # Queues for audio data and for non–audio commands that need sending to OpenAI.  
-        self.audio_queue: asyncio.Queue = asyncio.Queue()  
-        self.outgoing_queue: asyncio.Queue = asyncio.Queue()  
-
-        # For buffering messages coming from OpenAI.  
-        # Each client gets its own output queue so it “subscribes” to the responses.  
-        self.client_output_queues: Dict[web.WebSocketResponse, asyncio.Queue] = {}  
-
-        # Background tasks (kept so we start only one Azure connection and one mixer per session)  
-        self.azure_task: Optional[asyncio.Task] = None  
-        self.mixer_task: Optional[asyncio.Task] = None          
+        # Per client queues for sending and receiving data to/from OpenAI.  
+        self.client_output_queues: Dict[web.WebSocketResponse, asyncio.Queue] = {}
+        self.client_to_realtime_queues: Dict[web.WebSocketResponse, asyncio.Queue] = {}
+        self.azure_workers: Dict[web.WebSocketResponse, asyncio.Task] = {}
+        self.client_language_mapping: Dict[str, str] = {}
+        self.client_id_mapping: Dict[web.WebSocketResponse, str] = {}
+        # To record the partner for each client
+        self.partner_mapping: Dict[web.WebSocketResponse, web.WebSocketResponse] = {}
+        
+       
 class SessionState:  
     def __init__(self): 
         # Redis configuration 
