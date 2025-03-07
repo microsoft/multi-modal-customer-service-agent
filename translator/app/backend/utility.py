@@ -86,29 +86,3 @@ class SessionState:
             self.redis_client.set(key, base64.b64encode(pickle.dumps(value)))  
         else:
             self.session_store[key]=value
-          
-
-  
-def mix_audio_buffers(buffers: List[bytes]) -> bytes:  
-    """Mixes a list of raw PCM 16-bit single-channel byte sequences by summing them sample-by-sample,  
-    clipping the results to the 16-bit signed integer range, and returning the resulting 16-bit PCM bytes."""  
-      
-    if not buffers:  
-        return b""  
-      
-    # Convert each buffer into a NumPy array of signed 16-bit integers.  
-    np_buffers = [np.frombuffer(b, dtype=np.int16) for b in buffers]  
-      
-    # Find the length of the shortest buffer and truncate others to this length.  
-    min_len = min(len(b) for b in np_buffers)  
-    np_buffers = [b[:min_len] for b in np_buffers]  
-      
-    # Stack arrays vertically and sum along the first axis (sample-by-sample sum).  
-    sum_array = np.sum(np.vstack(np_buffers), axis=0)  
-      
-    # Clip the results to the 16-bit signed integer range.  
-    clipped_array = np.clip(sum_array, -32768, 32767).astype(np.int16)  
-      
-    # Convert the clipped array back to bytes.  
-    return clipped_array.tobytes()  
-  

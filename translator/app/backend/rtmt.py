@@ -9,8 +9,7 @@ from typing import Any, Callable, Optional, Dict, List
 from aiohttp import web  
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider  
 from azure.core.credentials import AzureKeyCredential  
-from utility import Session, mix_audio_buffers
-import base64
+from utility import Session
 
 
   
@@ -62,8 +61,8 @@ class RTMiddleTier:
                 session.user_languages.append(user_lang)  
                 partner_lang = [lang for lang in session.user_languages if lang != user_lang][0] if len(session.user_languages) > 1 else None  
                 session.system_prompts = {
-                    user_lang: f"""You are an AI translator who's sole function is to translate what you hear in {user_lang} to {partner_lang}. Be a truthful translator, and do not add any information beyond what is being said. **Never** respond with anything except the translation of what you heard.""",
-                    partner_lang: f"""You are an AI translator who's sole function is to translate what you hear in {partner_lang} to {user_lang}. Be a truthful translator, and do not add any information beyond what is being said. **Never** respond with anything except the translation of what you heard."""
+                    user_lang: f"""You are AI translation technology whose sole function is to translate input from {user_lang} to {partner_lang}. You have no thoughts or opinions of your own.\n\n<Rules>\n- Be a truthful translator, do not add any information beyond what is being said.\n- **Never** respond to an input question or statement with your own knowledge or opinion.\n- **Only** output the translation of the input from {user_lang} to {partner_lang}.\n</Rules>\n\n<examples>\n- Input: '<Some question in {user_lang}>'\n- Output: '<The translation of that question in {partner_lang}'\n</examples>""",
+                    partner_lang: f"""You are AI translation technology whose sole function is to translate input from {partner_lang} to {user_lang}. You have no thoughts or opinions of your own.\n\n<Rules>\n- Be a truthful translator, do not add any information beyond what is being said.\n- **Never** respond to an input question or statement with your own knowledge or opinion.\n- **Only** output the translation of the input from {partner_lang} to {user_lang}.\n</Rules>\n\n<examples>\n- Input: '<Some question in {partner_lang}>'\n- Output: '<The translation of that question in {user_lang}'\n</examples>"""
                 }
                 logger.info("joining, my lang: %s, partner_lang: %s", user_lang, partner_lang)  
                 session.ready = True
@@ -154,9 +153,7 @@ class RTMiddleTier:
 
     async def _client_message_handler(self, session_key: str, ws: web.WebSocketResponse, client_id: str):  
         """  
-        For each connected client, this task listens for messages.  
-        • If the message is an audio append, its base64–encoded audio is decoded and put into the shared queue.  
-        • Otherwise, the message is processed and put into a common outgoing queue.  
+        For each connected client, this task listens for messages and places them in the client's outgoing queue.  
         """  
         session = self.sessions[session_key]  
         user_lang = session.client_language_mapping[client_id]
@@ -214,7 +211,7 @@ class RTMiddleTier:
         """  
         When a client connects on the /realtime endpoint it:  
         • Gets added to the session's list of clients.  
-        • (If not already running) starts the azure worker and mixer tasks.  
+        • Starts the azure worker task.  
         • Starts a per-client task to receive incoming messages.  
         """  
         session_key = request.query.get("session_key") 
