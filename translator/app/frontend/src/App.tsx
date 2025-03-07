@@ -85,7 +85,7 @@ function App() {
   const { startSession, addUserAudio, inputAudioBufferClear } = useRealTime({  
     sessionKey: isSessionReady ? sessionKey : "",  
     user_lang: userLang,  
-    enableInputAudioTranscription: false,  
+    enableInputAudioTranscription: true,  
     onWebSocketOpen: () => console.log("WebSocket connection opened"),  
     onWebSocketClose: () => console.log("WebSocket connection closed"),  
     onWebSocketError: (event) => console.error("WebSocket error:", event),  

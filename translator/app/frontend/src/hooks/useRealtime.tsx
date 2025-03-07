@@ -165,11 +165,15 @@ const wsEndpoint = `${BACKEND_URL}/realtime?session_key=${sessionKey}&user_lang=
         onReceivedInputAudioBufferSpeechStarted?.(message);  
         break;  
       case "conversation.item.input_audio_transcription.completed":  
+        console.log("Input transcript:", message);
         onReceivedInputAudioTranscriptionCompleted?.(message as ResponseInputAudioTranscriptionCompleted);  
         break;  
       case "extension.middle_tier_tool_response":  
         onReceivedExtensionMiddleTierToolResponse?.(message as ExtensionMiddleTierToolResponse);  
         break;  
+      case "response.audio_transcript.done":
+        console.log("Response transcript:", message);
+        break;
       case "error":  
         onReceivedError?.(message);  
         break;  
