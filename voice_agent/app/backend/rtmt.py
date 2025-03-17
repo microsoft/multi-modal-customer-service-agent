@@ -159,7 +159,7 @@ class RTMiddleTier:
         realtime_client = AzureRealtimeWebsocket()
 
 
-        async with realtime_client(settings=settings, create_response=True, kernel=self.kernel):  
+        async with realtime_client(settings=settings, create_response=False, kernel=self.kernel):  
             # Task: forward messages from the client (ws) to the realtime service.  
             async def from_client_to_realtime():  
                 async for msg in ws:  
@@ -275,7 +275,7 @@ class RTMiddleTier:
                         logger.info("detecting change of intent, cancelling current response")
                         await realtime_client.send(RealtimeTextEvent(  
                             service_type="response.cancel",  
-                            text=TextContent(text="response.cancel"),
+                            text=TextContent(text=""),
                         ))  
 
                         # Update instructions dynamically when switching agents  
@@ -287,7 +287,7 @@ class RTMiddleTier:
                             self.kernel.add_plugin(plugin=self.flight_tool, plugin_name="flight_tools", description="tools for flight agent")
                         settings.instructions = self.current_agent.get("persona")  
 
-                        await realtime_client.update_session(settings= settings, kernel=self.kernel, create_response=True)
+                        await realtime_client.update_session(settings= settings, kernel=self.kernel, create_response=False)
 
                         self.transfer_conversation = False  
                         self.target_agent_name = None  
