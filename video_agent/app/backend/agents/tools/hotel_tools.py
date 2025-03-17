@@ -13,11 +13,11 @@ import json
 import logging
 import base64
 from typing import List  
-
+from openai import OpenAI
 from scipy import spatial  # for calculating vector similarities for search  
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")  
 logger = logging.getLogger(__name__)  
-
+import time
 # Load environment variables  
 env_path = Path('../../../') / 'secrets.env'  
 load_dotenv(dotenv_path=env_path)  
@@ -59,7 +59,9 @@ client = AzureOpenAI(
   
 ## function to get information from image based on the command, given image base64 string
 
-def get_information_from_camera(base64_encoded_data: List[str], command: str) -> str:  
+def get_information_from_camera(base64_encoded_data: List[str], command: str) -> str: 
+    start_time = time.time()
+ 
     logger.info("calling to gpt-4o mini")  
       
     # Initialize the messages list with the system and initial user command  
@@ -84,6 +86,49 @@ def get_information_from_camera(base64_encoded_data: List[str], command: str) ->
       
     result = response.choices[0].message.content  
     logger.info("get_information_from_camera result: %s", result)  
+    end_time = time.time()
+    logger.info("get_information_from_camera time: %s", end_time - start_time)
+    return result  
+def get_information_from_camera_custom(base64_encoded_data: List[str], command: str) -> str:  
+    logger.info("calling to qwen vlm")  
+    start_time = time.time()
+      
+    # Initialize the messages list with the system and initial user command  
+    messages = [  
+        { "role": "system", "content": "You are a helpful assistant." },  
+        { "role": "user", "content": [{"type": "text", "text": command}] }  
+    ]  
+      
+    # Loop through each base64-encoded image data and append it to the user content  
+    for image_data in base64_encoded_data:  
+        messages[1]["content"].append({  
+            "type": "image_url",  
+            "image_url": {"url": image_data}  
+        })  
+    api_key = os.getenv("CUSTOM_MODEL_API_KEY")  # Ensure you have set this in your environment
+    api_base = os.getenv("CUSTOM_MODEL_ENDPOINT")  # Ensure you have set this in your environment
+    extra_headers={
+
+        "Authorization": "Bearer " + api_key,
+        "azureml-model-deployment": "vllm-custom"
+    }
+
+    client = OpenAI(
+        api_key="None",
+        base_url=api_base,
+    )
+
+
+ 
+    # Make the request to the model  
+    response = client.chat.completions.create(model="Qwen/Qwen2.5-VL-7B-Instruct", messages=messages,extra_headers=extra_headers,
+        max_tokens=300  
+    )  
+      
+    result = response.choices[0].message.content  
+    logger.info("get_information_from_camera result: %s", result)  
+    end_time = time.time()
+    logger.info("get_information_from_camera time: %s", end_time - start_time)
     return result  
 
 
@@ -199,7 +244,7 @@ def load_user_reservation_info(user_id):
 async def get_information_from_camera_tool(args: Any) -> ToolResult:  
     base64_encoded_data = args['base64_encoded_data']  
     command = args['command']  
-    result = get_information_from_camera(base64_encoded_data, command)  
+    result = get_information_from_camera_custom(base64_encoded_data, command)  
 
     return ToolResult(result, ToolResultDirection.TO_SERVER)
     

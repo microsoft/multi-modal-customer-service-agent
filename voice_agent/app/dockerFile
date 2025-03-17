@@ -1,25 +1,30 @@
-# Stage 1: Build the Vite app
-FROM node:20-slim AS build-stage
+# Use a base image that supports both Node.js and Python installations  
+FROM python:3.11 
+  
+# Install Node.js  
+RUN apt-get update && \  
+    apt-get install -y curl && \  
+    curl -sL https://deb.nodesource.com/setup_16.x | bash - && \  
+    apt-get install -y nodejs  
+  
+WORKDIR /app  
+  
+# Copy both frontend and backend source code  
+COPY frontend ./frontend  
+COPY backend ./backend  
+  
+# Install Node.js dependencies and build the frontend  
+RUN cd frontend && npm install && npm run build  
+  
+# Install Python dependencies  
+RUN pip install -r backend/requirements.txt  
+  
+  
+# Expose the application port  
+EXPOSE 8765  
+  
+# Run the backend application  
+# Set the working directory to backend  
+WORKDIR /app/backend  
 
-# Set the working directory inside the container
-COPY frontend ./
-
-WORKDIR /frontend
-RUN npm install
-RUN npm run build
-
-# Stage 2: Serve the built app with a static file server
-FROM python:3.12-slim AS production-stage
-
-WORKDIR /app
-COPY --from=build-stage /backend/static /app/static
-COPY ./backend/ /app
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-RUN python -m pip install -r requirements.txt
-
-RUN python -m pip install gunicorn
-
-CMD ["python3", "-m", "gunicorn", "app:create_app", "-b", "0.0.0.0:8000", "--worker-class", "aiohttp.GunicornWebWorker"]
+CMD ["python", "app.py"]  

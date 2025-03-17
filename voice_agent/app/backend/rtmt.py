@@ -27,7 +27,7 @@ from semantic_kernel.connectors.ai.open_ai import (
     AzureRealtimeExecutionSettings,  
     AzureRealtimeWebsocket,  
 )  
-from openai.types.beta.realtime import ResponseAudioTranscriptDoneEvent,ConversationItemInputAudioTranscriptionCompletedEvent
+from openai.types.beta.realtime import ResponseAudioTranscriptDoneEvent,ConversationItemInputAudioTranscriptionCompletedEvent, InputAudioBufferAppendEvent
 from semantic_kernel.connectors.ai.realtime_client_base import RealtimeClientBase
 
 from semantic_kernel.contents import (  
@@ -46,9 +46,6 @@ logger = logging.getLogger(__name__)
 # --------------------------- RTMiddleTier Class ---------------------------  
   
 class RTMiddleTier:  
-    # These properties are “server‑enforced” and/or stored locally  
-    tools: dict[str, dict[str, Tool]] = {}  
-    current_agent_tools: dict[str, Tool] = {}  
     model: Optional[str] = None  
     agents: list[dict] = []  
     agent_names: list[str] = []  
@@ -278,7 +275,7 @@ class RTMiddleTier:
                         logger.info("detecting change of intent, cancelling current response")
                         await realtime_client.send(RealtimeTextEvent(  
                             service_type="response.cancel",  
-                            text=TextContent(text=""),
+                            text=TextContent(text="response.cancel"),
                         ))  
 
                         # Update instructions dynamically when switching agents  
