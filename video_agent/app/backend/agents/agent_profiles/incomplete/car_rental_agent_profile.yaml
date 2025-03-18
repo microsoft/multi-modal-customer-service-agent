@@ -1,4 +1,0 @@
-name: car_rental_agent
-domain_description: |
-  "Deal with car rental reservations, confirmations, changes, and general car rental policy questions."
-default_agent: false

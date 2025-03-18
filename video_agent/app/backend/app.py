@@ -24,7 +24,7 @@ async def upload_video_frame(request):
         frames = rtmt.session_state.get(f"{session_state_key}_video") or []  
         frames.append(frame_base64)  
         # Optionally limit the list to the last N frames  
-        frames = frames[-5:]  # Keep only the last 5 frames  
+        frames = frames[-1:]  # Keep only the last 1 frames  
   
         # Store the updated list back in the session state  
         rtmt.session_state.set(f"{session_state_key}_video", frames)  
