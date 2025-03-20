@@ -2,7 +2,8 @@ from typing import Annotated, Any
 from semantic_kernel.functions import kernel_function  
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey  
 from sqlalchemy.ext.declarative import declarative_base  
-from sqlalchemy.orm import sessionmaker, relationship  
+from sqlalchemy.orm import sessionmaker, relationship 
+from sqlalchemy.exc import SQLAlchemyError 
 from datetime import datetime, timedelta  
 from dateutil import parser  
 import random  
@@ -20,7 +21,9 @@ load_dotenv(dotenv_path=env_path)
 # Constants for Azure OpenAI  
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")  
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")  
-AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")  
+AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")
+AZURE_OPENAI_EMB_ENDPOINT = os.getenv("AZURE_OPENAI_EMB_ENDPOINT", AZURE_OPENAI_ENDPOINT)
+AZURE_OPENAI_EMB_API_KEY = os.getenv("AZURE_OPENAI_EMB_API_KEY", AZURE_OPENAI_API_KEY)
 AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")  
   
 # SQLAlchemy setup  
@@ -56,16 +59,16 @@ class Flight(Base):
 Base.metadata.create_all(engine)  
   
 # Azure OpenAI client setup  
-client = AzureOpenAI(  
-    api_key=AZURE_OPENAI_API_KEY,  
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,  
+embedding_client = AzureOpenAI(  
+    api_key=AZURE_OPENAI_EMB_API_KEY,  
+    azure_endpoint=AZURE_OPENAI_EMB_ENDPOINT,  
     api_version="2023-12-01-preview"  
 )  
   
 def get_embedding(text: str, model: str = AZURE_OPENAI_EMB_DEPLOYMENT) -> list[float]:  
     """Generate text embeddings using Azure OpenAI."""  
     text = text.replace("\n", " ")  
-    return client.embeddings.create(input=[text], model=model).data[0].embedding  
+    return embedding_client.embeddings.create(input=[text], model=model).data[0].embedding  
   
 class SearchClient:  
     """Client for performing semantic search on a knowledge base."""  
@@ -156,9 +159,6 @@ class Flight_Tools:
         charge = 80  
         old_flight = query_flight_by_ticket(current_ticket_number)  
         if old_flight:  
-            old_flight.status = "cancelled"  
-            session.commit()  
-  
             new_ticket_num = str(random.randint(1000000000, 9999999999))  
             new_flight = Flight(  
                 id=new_ticket_num,  
@@ -175,12 +175,19 @@ class Flight_Tools:
                 gate=old_flight.gate,  
                 status="open"  
             )  
-            session.add(new_flight)  
-            session.commit()  
-  
-            return (f"Your new flight is {new_flight_number}, departing from {new_flight.departure_airport} to {new_flight.arrival_airport} "  
-                    f"on {new_departure_time}, arriving at {new_arrival_time}. Your new ticket number is {new_ticket_num}. "  
-                    f"Your credit card has been charged ${charge}.")  
+            try:
+                with session.begin():
+                    session.add(new_flight)
+                    old_flight.status = "cancelled"
+                    session.commit()
+
+                return (f"Your new flight is {new_flight_number}, departing from {new_flight.departure_airport} to {new_flight.arrival_airport} "
+                        f"on {new_departure_time}, arriving at {new_arrival_time}. Your new ticket number is {new_ticket_num}. "
+                        f"Your credit card has been charged ${charge}.")
+            except SQLAlchemyError as e:
+                session.rollback()
+                return f"Failed to change the flight due to an error: {str(e)}"  
+ 
         return "Could not find the current ticket to change."  
   
     @kernel_function(  
@@ -222,12 +229,3 @@ class Flight_Tools:
             }  
             for flight in flights  
         ])  
-  
-    @kernel_function(  
-        name="transfer_conversation",  
-        description="Transfer the conversation to another agent when the conversation goes outside the defined scope."  
-    )  
-    async def transfer_conversation(self,  
-        user_request: Annotated[str, "Details of user's request."]  
-    ) -> str:  
-        return user_request  

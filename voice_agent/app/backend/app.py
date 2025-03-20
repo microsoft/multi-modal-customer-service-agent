@@ -10,8 +10,8 @@ from azure.core.credentials import AzureKeyCredential
 if __name__ == "__main__":
     load_dotenv()
     llm_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
-    llm_deployment = os.environ.get("AZURE_OPENAI_RT_DEPLOYMENT")
-    llm_key = os.environ.get("AZURE_OPENAI_RT_API_KEY")
+    llm_deployment = os.environ.get("AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME")
+    llm_key = os.environ.get("AZURE_OPENAI_API_KEY")
     search_endpoint = os.environ.get("AZURE_SEARCH_ENDPOINT")
     search_index = os.environ.get("AZURE_SEARCH_INDEX")
     search_key = os.environ.get("AZURE_SEARCH_API_KEY")

@@ -19,7 +19,9 @@ load_dotenv(dotenv_path=env_path)
 # Constants for Azure OpenAI  
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")  
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")  
-AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")  
+AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")
+AZURE_OPENAI_EMB_ENDPOINT = os.getenv("AZURE_OPENAI_EMB_ENDPOINT", AZURE_OPENAI_ENDPOINT)
+AZURE_OPENAI_EMB_API_KEY = os.getenv("AZURE_OPENAI_EMB_API_KEY", AZURE_OPENAI_API_KEY)  
 AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")  
   
 # SQLAlchemy setup  
@@ -48,16 +50,16 @@ class Reservation(Base):
 Base.metadata.create_all(engine)  
   
 # Azure OpenAI client setup  
-client = AzureOpenAI(  
-    api_key=AZURE_OPENAI_API_KEY,  
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,  
+embedding_client = AzureOpenAI(  
+    api_key=AZURE_OPENAI_EMB_API_KEY,  
+    azure_endpoint=AZURE_OPENAI_EMB_ENDPOINT,  
     api_version="2023-12-01-preview"  
 )  
   
 def get_embedding(text: str, model: str = AZURE_OPENAI_EMB_DEPLOYMENT) -> list[float]:  
     """Generate text embeddings using Azure OpenAI."""  
     text = text.replace("\n", " ")  
-    return client.embeddings.create(input=[text], model=model).data[0].embedding  
+    return embedding_client.embeddings.create(input=[text], model=model).data[0].embedding  
   
 class SearchClient:  
     """Client for performing semantic search on a knowledge base."""  
@@ -198,14 +200,4 @@ class Hotel_Tools:
                 'status': reservation.status  
             }  
             for reservation in reservations  
-        ])  
-    
-    @kernel_function(  
-        name="transfer_conversation",  
-        description="Transfer the conversation to another agent when the conversation goes outside the defined scope."  
-    )  
-    async def transfer_conversation(self,  
-        user_request: Annotated[str, "Details of user's request."]  
-    ) -> str:  
-        return user_request  
-    
+        ])   
