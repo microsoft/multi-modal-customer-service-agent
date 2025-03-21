@@ -11,6 +11,7 @@ WORKDIR /app
   
 # Copy both frontend and backend source code  
 COPY frontend ./frontend  
+COPY data ./data  
 COPY backend ./backend  
   
 # Install Node.js dependencies and build the frontend  
