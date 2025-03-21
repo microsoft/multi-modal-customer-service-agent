@@ -12,9 +12,6 @@ from pathlib import Path
 from scipy import spatial  
 from openai import AzureOpenAI  
   
-# Load environment variables  
-env_path = Path('../../../') / 'secrets.env'  
-load_dotenv(dotenv_path=env_path)  
   
 # Constants for Azure OpenAI  
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")  
@@ -26,7 +23,7 @@ AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
   
 # SQLAlchemy setup  
 Base = declarative_base()  
-engine = create_engine('sqlite:///../../../data/hotel.db')  
+engine = create_engine('sqlite:///../data/hotel.db')  
 Session = sessionmaker(bind=engine)  
 session = Session()  
   
@@ -78,7 +75,7 @@ class SearchClient:
         cosine_list = cosine_list[:topk]  
   
         return "\n".join(f"{chunk_id}\n{content}" for chunk_id, content, _ in cosine_list)  
-  
+search_client =SearchClient("../data/hotel_policy.json")
 # Utility function for querying reservations  
 def query_reservation_by_id(reservation_id: str):  
     return session.query(Reservation).filter_by(id=reservation_id, status="booked").first()  
@@ -95,7 +92,7 @@ class Hotel_Tools:
     async def search_hotel_knowledgebase(self, 
         search_query: Annotated[str, "The search query to use to search the knowledge base."]  
     ) -> str:  
-        return SearchClient("../../../data/hotel_policy.json").find_article(search_query)  
+        return search_client.find_article(search_query)  
     
     @kernel_function(  
         name="query_rooms",  

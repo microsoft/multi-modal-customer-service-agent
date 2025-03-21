@@ -91,7 +91,7 @@ class RTMiddleTier:
     def _load_agents(self):  
         base_path = "agents/agent_profiles"  
         agent_profiles = [f for f in os.listdir(base_path) if f.endswith("_profile.yaml")]  
-        with open("../../../data/user_profile.json") as f:  
+        with open("../data/user_profile.json") as f:  
             user_profile = json.load(f)  
         for profile in agent_profiles:  
             profile_path = os.path.join(base_path, profile)  

@@ -26,7 +26,7 @@ az acr build --registry $CONTAINER_REGISTRY --image $IMAGE_NAME --file ./Dockerf
 az containerapp env create --name $CONTAINER_ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION
 # Deploy the application and get its URL  
 app_service_output=$(az containerapp create \
-  --name translator-assistant \
+  --name ai-customer-service \
   --resource-group $RESOURCE_GROUP \
   --environment $CONTAINER_ENVIRONMENT \
   --image $CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME \

@@ -14,9 +14,6 @@ from pathlib import Path
 from scipy import spatial  
 from openai import AzureOpenAI  
   
-# Load environment variables  
-env_path = Path('.') / 'secrets.env'  
-load_dotenv(dotenv_path=env_path)  
   
 # Constants for Azure OpenAI  
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")  
@@ -28,7 +25,7 @@ AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
   
 # SQLAlchemy setup  
 Base = declarative_base()  
-sqllite_db_path = os.environ.get("SQLITE_DB_PATH", "../../../data/flight_db.db")  
+sqllite_db_path = os.environ.get("SQLITE_DB_PATH", "../data/flight_db.db")  
 engine = create_engine(f'sqlite:///{sqllite_db_path}')  
 Session = sessionmaker(bind=engine)  
 session = Session()  
@@ -87,7 +84,7 @@ class SearchClient:
         cosine_list = cosine_list[:topk]  
   
         return "\n".join(f"{chunk_id}\n{content}" for chunk_id, content, _ in cosine_list)  
-  
+search_client = SearchClient("../data/flight_policy.json")
 def query_flight_by_ticket(ticket_num: str):  
     return session.query(Flight).filter_by(ticket_num=ticket_num, status="open").first()  
   
@@ -103,7 +100,7 @@ class Flight_Tools:
     async def search_airline_knowledgebase(self,  
         search_query: Annotated[str, "The search query to use to search the knowledge base."]  
     ) -> str:  
-        return SearchClient("../../../data/flight_policy.json").find_article(search_query)  
+        return search_client.find_article(search_query)  
   
     @kernel_function(  
         name="query_flights",  
