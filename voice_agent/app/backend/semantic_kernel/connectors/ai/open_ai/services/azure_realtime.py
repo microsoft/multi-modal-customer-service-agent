@@ -95,12 +95,14 @@ class AzureRealtimeWebsocket(OpenAIRealtimeWebsocketBase, AzureOpenAIConfigBase)
             raise ServiceInitializationError("Failed to create OpenAI settings.", ex) from ex
         if not azure_openai_settings.realtime_deployment_name:
             raise ServiceInitializationError("The OpenAI realtime model ID is required.")
+        print("api key inside realtime ", azure_openai_settings.api_key)
         super().__init__(
             audio_output_callback=audio_output_callback,
             deployment_name=azure_openai_settings.realtime_deployment_name,
             endpoint=azure_openai_settings.endpoint,
             base_url=azure_openai_settings.base_url,
             api_version=azure_openai_settings.api_version,
+            api_key=azure_openai_settings.api_key.get_secret_value(),
             ad_token=ad_token,
             ad_token_provider=ad_token_provider,
             token_endpoint=azure_openai_settings.token_endpoint,

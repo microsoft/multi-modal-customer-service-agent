@@ -41,6 +41,7 @@ class AzureOpenAIConfigBase(OpenAIHandler):
         instruction_role: str | None = None,
         **kwargs: Any,
     ) -> None:
+        
         """Internal class for configuring a connection to an Azure OpenAI service.
 
         The `validate_call` decorator is used with a configuration that allows arbitrary types.
