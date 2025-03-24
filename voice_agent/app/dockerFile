@@ -28,4 +28,4 @@ EXPOSE 8765
 # Set the working directory to backend  
 WORKDIR /app/backend  
 
-CMD ["python", "app.py"]  
+CMD ["python", "app.py", "--host", "0.0.0.0"]  

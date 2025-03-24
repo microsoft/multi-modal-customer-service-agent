@@ -1,6 +1,6 @@
 #!/bin/bash  
   
-# Enable command tracing for debugging  
+# Enable error exiting and pipefail  
 set -e  
 set -o pipefail  
   
@@ -18,77 +18,82 @@ IMAGE_NAME="voice-agent:$TIMESTAMP"
   
 # Validate prerequisites  
 if ! command -v az &> /dev/null || ! command -v docker &> /dev/null || ! az account show &> /dev/null; then  
-  echo "Ensure Azure CLI, Docker, and Azure login are configured."  
-  exit 1  
+    echo "Ensure Azure CLI, Docker, and Azure login are configured."  
+    exit 1  
 fi  
   
 # Create resource group (idempotent)  
-az group create --name $RESOURCE_GROUP --location $LOCATION  
+echo "Creating (or updating) resource group: $RESOURCE_GROUP..."  
+az group create --name "$RESOURCE_GROUP" --location "$LOCATION"  
   
 # Create container registry (idempotent)  
-az acr create --resource-group $RESOURCE_GROUP --name $CONTAINER_REGISTRY --sku Basic  
+echo "Creating (or updating) container registry: $CONTAINER_REGISTRY..."  
+az acr create --resource-group "$RESOURCE_GROUP" --name "$CONTAINER_REGISTRY" --sku Basic  
   
 # Enable admin rights for the container registry  
-az acr update --name $CONTAINER_REGISTRY --admin-enabled true --resource-group $RESOURCE_GROUP  
+echo "Enabling admin rights for container registry: $CONTAINER_REGISTRY..."  
+az acr update --name "$CONTAINER_REGISTRY" --admin-enabled true --resource-group "$RESOURCE_GROUP"  
   
 # Log in to the container registry  
-az acr login --name $CONTAINER_REGISTRY  
+echo "Logging into container registry: $CONTAINER_REGISTRY..."  
+az acr login --name "$CONTAINER_REGISTRY"  
   
 # Build the Docker image and push it to the container registry  
-az acr build --registry $CONTAINER_REGISTRY --image $IMAGE_NAME --file ./Dockerfile .  
+echo "Building and pushing Docker image: $IMAGE_NAME..."  
+az acr build --registry "$CONTAINER_REGISTRY" --image "$IMAGE_NAME" --file ./Dockerfile .  
   
-# Create container environment (idempotent)  
-az containerapp env create --name $CONTAINER_ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION  
+# Ensure container environment exists (idempotency check)  
+echo "Checking if container environment $CONTAINER_ENVIRONMENT exists..."  
+if ! az containerapp env show --name "$CONTAINER_ENVIRONMENT" --resource-group "$RESOURCE_GROUP" &> /dev/null; then  
+    echo "Container environment $CONTAINER_ENVIRONMENT not found. Creating it now..."  
+    az containerapp env create --name "$CONTAINER_ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --location "$LOCATION"  
+else  
+    echo "Container environment $CONTAINER_ENVIRONMENT already exists. Proceeding..."  
+fi  
   
-# Deploy or update container app  
+# Function to deploy or update the container app  
 deploy_container_app() {  
-  local APP_NAME=$1  
-  local IMAGE_NAME=$2  
-  local PORT=$3  
+    local APP_NAME="$1"  
+    local IMAGE_NAME="$2"  
+    local PORT="$3"  
   
-  APP_EXISTS=$(az containerapp show --name $APP_NAME --resource-group $RESOURCE_GROUP --query name --output tsv 2>/dev/null)  
+    echo "Checking if container app $APP_NAME exists..."  
+    APP_EXISTS=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query name --output tsv 2>/dev/null)  
   
-  if [ -z "$APP_EXISTS" ]; then  
-    # Deploy the container app  
-    service_output=$(az containerapp create \
-      --name $APP_NAME \
-      --resource-group $RESOURCE_GROUP \
-      --environment $CONTAINER_ENVIRONMENT \
-      --image $CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME \
-      --min-replicas 1 \
-      --max-replicas 1 \
-      --target-port $PORT \
-      --ingress external \
-      --query properties.configuration.ingress.fqdn \
-      --output tsv)
+    # Retrieve ACR credentials using variables  
+    ACR_USERNAME=$(az acr credential show --name "$CONTAINER_REGISTRY" --resource-group "$RESOURCE_GROUP" --query username --output tsv)  
+    ACR_PASSWORD=$(az acr credential show --name "$CONTAINER_REGISTRY" --resource-group "$RESOURCE_GROUP" --query passwords[0].value --output tsv)  
   
-    if [ -z "$service_output" ]; then  
-      echo "Failed to deploy $APP_NAME."  
-      exit 1  
+    if [ -z "$APP_EXISTS" ]; then  
+        echo "Creating container app: $APP_NAME..."
+        if ! az containerapp create \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$CONTAINER_ENVIRONMENT" \
+            --image "$CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME" \
+            --min-replicas 1 \
+            --max-replicas 1 \
+            --target-port "$PORT" \
+            --registry-server "$CONTAINER_REGISTRY.azurecr.io" \
+            --registry-username "$ACR_USERNAME" \
+            --registry-password "$ACR_PASSWORD" \
+            --ingress external; then
+            echo "Error: Failed to create container app $APP_NAME."
+            exit 1
+        fi  
+        echo "Container app $APP_NAME created successfully."  
     else  
-      echo "Successfully deployed $APP_NAME service with URL: http://$service_output"  
+        echo "Updating container app: $APP_NAME..."  
+        if ! az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME"; then
+            echo "Error: Failed to update container app $APP_NAME."
+            exit 1
+        fi
+        echo "Container app $APP_NAME updated successfully."  
     fi  
-  else  
-    # Update the container app  
-    az containerapp update \  
-      --name $APP_NAME \  
-      --resource-group $RESOURCE_GROUP \  
-      --image $CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME  
-  
-    service_output=$(az containerapp show \  
-      --name $APP_NAME \  
-      --resource-group $RESOURCE_GROUP \  
-      --query properties.configuration.ingress.fqdn \  
-      --output tsv)  
-  
-    if [ -z "$service_output" ]; then  
-      echo "Failed to update $APP_NAME."  
-      exit 1  
-    else  
-      echo "Successfully updated $APP_NAME service with URL: http://$service_output"  
-    fi  
-  fi  
 }  
   
-# Deploy or update the application  
-deploy_container_app $APP_NAME $IMAGE_NAME $PORT  
+# Deploy or update the container application  
+deploy_container_app "$APP_NAME" "$IMAGE_NAME" "$PORT"  
