@@ -1,9 +1,9 @@
 # Backend
 **/*.pyc
-**/.env
 
 ## Will be built by multistage docker build
 **/static
-
+**/venv
+**/__pycache__
 # Frontend
 **/node_modules
