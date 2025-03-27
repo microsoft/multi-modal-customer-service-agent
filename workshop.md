@@ -1,54 +1,47 @@
 # Build and Deploy Production Grade AI Apps Workshop
 
 ## Overview
-In this workshop, you will learn how to build and deploy a production-grade AI application using Semantic Kernel, Azure Open AI, AI Foundry, and Cosmos DB. The application will be a multi-modal, multi-agent customer service app. You will clone a prebuilt app, build and run it locally, understand its architecture, and then add new features through hands-on exercises.
+In this workshop, you will learn how to build and deploy a production-grade AI application using [Semantic Kernel](https://learn.microsoft.com/en-us/semantic-kernel/overview/), [Azure AI Foundry](https://azure.microsoft.com/en-us/products/ai-foundry/), and [Azure Cosmos DB](https://azure.microsoft.com/en-us/products/cosmos-db/). The application is a multi-modal, multi-agent customer service app.
+
+You will clone a prebuilt app, build and run it locally, deploy it in Azure, understand its architecture, and then add new features, scale and secure it through hands-on exercises.
 
 ## Prerequisites
 - Basic knowledge of Python and React.js
 - Azure subscription
 - Visual Studio Code or any other code editor
-- Docker installed on your machine
+- Docker installed on your machine if you're not using a lab environment
 
-## Workshop Steps
+## Workshop Chapters
 
-### 1. Setup and Prerequisites
-- Install required tools and libraries
-- Clone the prebuilt app repository
-- Set up your development environment
+### [Chapter 1. Overview of key Azure Services, overall Application Architecture and Codebase](workshop/chapter_01/README.md)
 
-### 2. Understanding the Prebuilt App
-- Overview of the app architecture
-- Introduction to Semantic Kernel, Azure Open AI, AI Foundry, and Cosmos DB
-- Walkthrough of the codebase
+In this chapter, you will get an overview of the key Azure services used in the application, the overall application architecture, and the codebase. You will learn about Semantic Kernel, Azure Open AI, AI Foundry, and Cosmos DB. You will also get an introduction to AI Foundry's Evaluation Framework and how to integrate Azure Content Safety. Finally, you will get a walkthrough of the app architecture and the codebase.
 
-### 3. Building and Running the App Locally
-- Install dependencies
-- Configure environment variables
-- Build and run the backend (Python)
-- Build and run the frontend (React.js)
-- Test the app locally
+### [Chapter 2. Setup your Environment (skip if using a Lab environment)](workshop/chapter_02/README.md)
 
-### 4. Deploying to Azure
-- Introduction to Azure Container Apps
-- Setting up Azure Landing Zones for infrastructure
-- Deploying the backend to Azure Container Apps
-- Deploying the frontend to Azure Container Apps
+Proceed to this section if you'd like to setup your local development environment. You will install the required tools and libraries, clone the prebuilt app repository, and set up your development environment.
 
-### 5. Secure and Responsible AI
-- Introduction to AI Foundry's Evaluation Framework
-- Integrating Azure Content Safety
-- Ensuring secure and responsible AI practices
+You will also set up the Azure Landing Zone to host the application once deployed.
 
-### 6. Hands-On Exercises
-- Exercise 1: Adding a new feature to the backend
-- Exercise 2: Enhancing the frontend with new UI components
-- Exercise 3: Integrating an additional AI model
-- Exercise 4: Implementing advanced data handling with Cosmos DB
+If you are using a lab environment, you can skip this chapter.
 
-### 7. Conclusion and Next Steps
-- Recap of what you've learned
-- Additional resources for further learning
-- Q&A session
+### [Chapter 3. Building and Running the App Locally](workshop/chapter_03/README.md)
+
+In this chapter, you will build and run the backend (Python) and frontend (React.js) of the app locally. You will test the app locally to ensure everything is working as expected.
+
+### [Chapter 4. Deploying to Azure](workshop/chapter_04/README.md)
+
+In this chapter, you will deploy the app front end and backend services to Azure and proceed with some basic tests to ensure everything is working as expected.
+
+### [Chapter 5. Hands-On Exercises](workshop/chapter_05/README.md)
+
+In this chapter, you will add new features to the app, scale it and secure it. You will also learn how to monitor and troubleshoot the app from the perspective of a different personas involved in a modern application development lifecycle.
+
+You will experience the benefits of a production-grade AI application when it comes to speed of innovation, maintainability and scalability.
+
+### [Chapter 6. Conclusion and Next Steps](workshop/chapter_06/README.md)
+
+Go to this chapter to wrap up the workshop with an overview of the key takeaways and next steps.
 
 ## Appendix
 - Links to documentation and resources
