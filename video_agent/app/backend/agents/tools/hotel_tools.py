@@ -244,7 +244,8 @@ def load_user_reservation_info(user_id):
 async def get_information_from_camera_tool(args: Any) -> ToolResult:  
     base64_encoded_data = args['base64_encoded_data']  
     command = args['command']  
-    result = get_information_from_camera_custom(base64_encoded_data, command)  
+    result = get_information_from_camera(base64_encoded_data, command)  
+    print("get_information_from_camera_tool result: ", result)
 
     return ToolResult(result, ToolResultDirection.TO_SERVER)
     
