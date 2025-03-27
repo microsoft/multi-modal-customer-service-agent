@@ -1,7 +1,9 @@
 #!/usr/bin/env python  
 """  
-Updated realtime voice AI agent using semantic_kernel for standardization.  
-Make sure to install semantic-kernel[realtime] along with your other dependencies.  
+Updated realtime voice AI agent using semantic_kernel for standardization.
+This version demonstrates how to use an external/distributed session state
+(via SessionState) and how to add a locking mechanism to avoid concurrent update issues.
+Make sure to install semantic-kernel[realtime] along with your other dependencies.
 """  
   
 import os  
@@ -10,7 +12,7 @@ import json
 import yaml  
 import logging  
 from enum import Enum  
-from typing import Any, Callable, Optional  
+from typing import Any, Callable, Optional, Dict
 import base64
 from aiohttp import web  
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider  
@@ -58,7 +60,7 @@ class RTMiddleTier:
     _token_provider = None
     use_classification_model: bool = True
 
-    # A global session state backup 
+    # Distributed session state object. This uses Redis if available, otherwise in-memory.  
     session_state = SessionState()  
 
     # Global Semantic Kernel objects keyed by agent name (shared among sessions)  
@@ -73,7 +75,8 @@ class RTMiddleTier:
         # Initialize the Semantic Kernel (global to the process)  
         self.kernel = Kernel()  
 
-        # Load agent profiles and associated tools  
+        # Load agent profiles and associated tools. Note that we leave the agent “persona”  
+        # as a template (with placeholders) so that customer details can be injected per session.  
         self._load_agents()  
         self.endpoint = endpoint  
         self.deployment = deployment  
@@ -85,25 +88,19 @@ class RTMiddleTier:
             )  
             self._token_provider()  # Warm up token  
 
-        # A dictionary to hold all session-specific state  
+        # A dictionary to hold all session-specific state.  
         # Keys: session_state_key; Values: dict holding current_agent, current_agent_kernel, history, etc.  
         self.sessions: dict[str, dict] = {}  
 
     def _load_agents(self):  
         base_path = "agents/agent_profiles"  
         agent_profiles = [f for f in os.listdir(base_path) if f.endswith("_profile.yaml")]  
-        with open("../data/user_profile.json") as f:  
-            user_profile = json.load(f)  
         for profile in agent_profiles:  
             profile_path = os.path.join(base_path, profile)  
             with open(profile_path, "r") as file:  
                 try:  
                     data = yaml.safe_load(file)  
-                    # Update persona using values from the user profile.  
-                    data["persona"] = data["persona"].format(  
-                        customer_name=user_profile["name"],  
-                        customer_id=user_profile["customer_id"]  
-                    )  
+                    # Leave persona as a template – do not format with customer info here.  
                     self.agents.append(data)  
                     agent_name = data.get("name")  
                     self.kernels[agent_name] = Kernel()  
@@ -127,6 +124,14 @@ class RTMiddleTier:
         self.default_agent = next(agent for agent in self.agents if agent.get("default_agent"))  
         self.default_agent_kernel = self.kernels.get(self.default_agent.get("name"))  
 
+    def _format_instructions(self, agent: dict, session: dict) -> str:  
+        # Helper method to format the agent's persona template with session-specific customer details.  
+        template = agent.get("persona", "")  
+        return template.format(  
+            customer_name=session.get("customer_name", "John Doe"),  
+            customer_id=session.get("customer_id", "12345")  
+        )  
+
     # ----------------- Session-specific helper methods -----------------  
     async def _detect_intent_change(self, session: dict):  
         # Use the session’s own conversation history and current agent.  
@@ -149,9 +154,10 @@ class RTMiddleTier:
             (agent for agent in self.agents if agent.get("name") == session["target_agent_name"]), None  
         )  
         session["current_agent_kernel"] = self.kernels.get(session["current_agent"].get("name"))  
-        # Update realtime_settings instructions with the new agent's persona.  
+        # Format the new agent's persona with session-specific customer details.  
+        formatted_instructions = self._format_instructions(session["current_agent"], session)  
         if session.get("realtime_settings"):  
-            session["realtime_settings"].instructions = session["current_agent"].get("persona")  
+            session["realtime_settings"].instructions = formatted_instructions  
         await realtime_client.update_session(  
             settings=session["realtime_settings"],  
             kernel=session["current_agent_kernel"]  
@@ -163,20 +169,22 @@ class RTMiddleTier:
     async def _forward_messages(self, session_state_key: str, session: dict, ws: web.WebSocketResponse):  
         logger.info("Starting Semantic Kernel based realtime session")  
 
-        # Build the realtime session settings using the session’s current agent.  
+        # Build the realtime session settings using the session’s current agent  
+        # and a formatted version of its persona (with the customer name and id).  
+        formatted_instructions = self._format_instructions(session["current_agent"], session)  
         session["realtime_settings"] = AzureRealtimeExecutionSettings(  
-            instructions=session["current_agent"].get("persona"),  
+            instructions=formatted_instructions,  
             turn_detection=TurnDetection(  
                 type=os.environ.get("TURN_DETECTION_MODEL", "server_vad"),  
-                threshold=os.environ.get("TURN_DETECTION_THRESHOLD", 0.5),  
-                prefix_padding_ms=os.environ.get("TURN_DETECTION_PREFIX_PADDING_MS", 300), 
-                silence_duration_ms=os.environ.get("TURN_DETECTION_SILENCE_DURATION_MS", 200), 
+                threshold=float(os.environ.get("TURN_DETECTION_THRESHOLD", 0.5)),  
+                prefix_padding_ms=int(os.environ.get("TURN_DETECTION_PREFIX_PADDING_MS", 300)),  
+                silence_duration_ms=int(os.environ.get("TURN_DETECTION_SILENCE_DURATION_MS", 200)),  
                 create_response=False  
             ),  
             input_audio_transcription={"model": os.environ.get("TRANSCRIPTION_MODEL", "whisper-1")},  
             input_audio_format="pcm16",  
             output_audio_format="pcm16",  
-            voice=os.environ.get("VOICE_NAME","ash"),  
+            voice=os.environ.get("VOICE_NAME", "ash"),  
             temperature=self.temperature,  
             max_response_output_tokens=self.max_tokens,  
             disable_audio=self.disable_audio,  
@@ -292,16 +300,19 @@ class RTMiddleTier:
 
     def attach_to_app(self, app, path):  
         async def _handler_with_session_key(request: web.Request):  
-            # Get session_state_key from query parameters (defaulting if needed)  
+            # Get session_state_key and customer information from query parameters.  
             session_state_key = request.query.get("session_state_key", "default_session_id")  
             logger.info("Session state key: %s", session_state_key)  
+
+            # Extract session-specific customer details from query parameters.  
+            customer_name = request.query.get("customer_name", "John Doe")  
+            customer_id = request.query.get("customer_id", "12345")  
 
             # Try retrieving any backup conversation from persistent session_state.  
             init_history = self.session_state.get(session_state_key)  
             # Check if we already have a session for this key.  
             session = self.sessions.get(session_state_key)  
             if session is None:  
-                # Create a new session with the defaults loaded from _load_agents.  
                 if init_history is None:  
                     init_history = []  
                 session = {  
@@ -311,12 +322,15 @@ class RTMiddleTier:
                     "target_agent_name": None,  
                     "transfer_conversation": False,  
                     "realtime_settings": None,  
+                    "customer_name": customer_name,  
+                    "customer_id": customer_id,  
                 }  
                 self.sessions[session_state_key] = session  
             else:  
-                # If the session already exists, you could also refresh its history from backup if desired.  
                 if init_history:  
                     session["history"] = init_history  
+                session["customer_name"] = customer_name  
+                session["customer_id"] = customer_id  
             return await self._websocket_handler(session_state_key, session, request)  
 
         app.router.add_get(path, _handler_with_session_key)  

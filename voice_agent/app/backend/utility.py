@@ -25,7 +25,10 @@ import redis
 import pickle
 import base64
 from typing import Dict
-
+import logging
+# Configure logging  
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")  
+logger = logging.getLogger(__name__)  
 
 def load_entity(file_path, entity_name):  
     with open(file_path, 'r') as file:  
@@ -121,6 +124,7 @@ class SessionState:
         AZURE_REDIS_KEY = os.getenv("AZURE_REDIS_KEY")  
         if AZURE_REDIS_KEY: #use redis
             self.redis_client = redis.StrictRedis(host=AZURE_REDIS_ENDPOINT, port=6380, password=AZURE_REDIS_KEY, ssl=True)  
+            logger.info("Using Redis for session storage")
         else: #use in-memory
             self.session_store: Dict[str, Dict] = {}  
 
