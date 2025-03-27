@@ -12,11 +12,8 @@ if __name__ == "__main__":
     llm_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
     llm_deployment = os.environ.get("AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME")
     llm_key = os.environ.get("AZURE_OPENAI_API_KEY")
-    search_endpoint = os.environ.get("AZURE_SEARCH_ENDPOINT")
-    search_index = os.environ.get("AZURE_SEARCH_INDEX")
-    search_key = os.environ.get("AZURE_SEARCH_API_KEY")
 
-    credentials = DefaultAzureCredential() if not llm_key or not search_key else None
+    credentials = DefaultAzureCredential() if not llm_key else None
 
     app = web.Application()
 
