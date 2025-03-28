@@ -1,6 +1,6 @@
-### Chapter 1. Overview of key Azure Services, overall Application Architecture and Codebase
+# Overview of key Azure Services, overall Application Architecture and Codebase
 
-#### Introduction to Semantic Kernel, Azure Open AI, AI Foundry, and Cosmos DB
+## Introduction to Semantic Kernel, Azure Open AI, AI Foundry, and Cosmos DB
   
 Semantic Kernel is a lightweight, open-source development kit that lets you easily build AI agents and integrate the latest AI models into your C#, Python, or Java codebase. It serves as an efficient middleware that enables rapid delivery of enterprise-grade solutions. Semantic Kernel combines prompts with existing APIs to perform actions, and it uses OpenAPI specifications to share extensions with other developers. It is designed to be future-proof, allowing you to swap out AI models without needing to rewrite your entire codebase. Here are some key points:
 - Enterprise Ready: Trusted by Microsoft and other Fortune 500 companies, Semantic Kernel is flexible, modular, and secure. It supports telemetry and other security features, ensuring responsible AI solutions at scale.
@@ -28,10 +28,11 @@ Cosmos DB is a globally distributed, multi-model database service provided by Mi
 - Consistency Models: Azure Cosmos DB provides five consistency models (strong, bounded staleness, session, consistent prefix, and eventual), giving you control over the trade-off between consistency and performance.
 - Comprehensive Security: It includes features like encryption at rest, network isolation, and compliance with industry standards to ensure data security.
 
-#### Introduction to AI Foundry's Evaluation Framework
-#### Integrating Azure Content Safety
-#### Ensuring secure and responsible AI practices
+## Introduction to AI Foundry's Evaluation Framework
+## Integrating Azure Content Safety
+## Ensuring secure and responsible AI practices
 #### Overview of the app architecture
 - Walkthrough of the codebase
 
-#### Navigation: [Home](../../workshop.md) | [Next Chapter](../chapter_02/README.md)
+---
+#### Navigation: [Home](../../README.md) | [Next Section](../02_setup/README.md)
