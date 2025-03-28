@@ -15,9 +15,15 @@ if __name__ == "__main__":
   
     app = web.Application()  
     rtmt = RTMiddleTier(llm_endpoint, llm_deployment, credentials)  
-    rtmt.attach_to_app(app, handshake_path="/handshake", realtime_path="/realtime")  
+    # rtmt.attach_to_app(app, handshake_path="/handshake", realtime_path="/realtime")  
 
-    app.add_routes([web.get('/', lambda _: web.FileResponse('./static/index.html'))])  
-    app.router.add_static('/', path='./static', name='static')  
-  
-    web.run_app(app, host='localhost', port=8765)  
+    # Attach your realtime endpoint only. (Remove serving the frontend static files)  
+    rtmt.attach_to_app(app, "/realtime")  
+    
+    # Optional: define a basic route for health-checks  
+    app.add_routes([  
+        web.get('/', lambda request: web.json_response({"message": "Backend API is running."}))  
+    ])  
+
+    # Listen on 0.0.0.0 so that the container’s port is reachable externally.  
+    web.run_app(app, host='0.0.0.0', port=8765)  
