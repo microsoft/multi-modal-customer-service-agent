@@ -21,6 +21,4 @@ if __name__ == "__main__":
 
     rtmt.attach_to_app(app, "/realtime")
 
-    app.add_routes([web.get('/', lambda _: web.FileResponse('./static/index.html'))])
-    app.router.add_static('/', path='./static', name='static')
     web.run_app(app, host='localhost', port=8765)
