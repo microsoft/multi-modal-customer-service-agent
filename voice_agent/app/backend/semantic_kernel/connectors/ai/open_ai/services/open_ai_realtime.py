@@ -191,6 +191,7 @@ def kernel_function_metadata_to_function_call_format(
 
 def _create_openai_realtime_client_event(event_type: SendEvents, **kwargs: Any) -> RealtimeClientEvent:
     """Create an OpenAI Realtime client event from a event type and kwargs."""
+
     match event_type:
         case SendEvents.SESSION_UPDATE:
             if "session" not in kwargs:
@@ -452,15 +453,15 @@ class OpenAIRealtimeBase(OpenAIHandler, RealtimeClientBase):
         match event:
             case RealtimeAudioEvent():
                 created_event = _create_openai_realtime_client_event(
-                        event_type='input_audio_buffer.append', audio=event.audio.data_string)
+                        event_type=SendEvents.INPUT_AUDIO_BUFFER_APPEND.value, audio=event.audio.data_string)
+
                 await self._send(
-                    
                     created_event
                 )
             case RealtimeTextEvent():
                 await self._send(
                     _create_openai_realtime_client_event(
-                        event_type='conversation.item.create',
+                        event_type=SendEvents.CONVERSATION_ITEM_CREATE.value,
                         item={
                             "type": "message",
                             "content": [
@@ -476,7 +477,7 @@ class OpenAIRealtimeBase(OpenAIHandler, RealtimeClientBase):
             case RealtimeFunctionCallEvent():
                 await self._send(
                     _create_openai_realtime_client_event(
-                        event_type='conversation.item.create',
+                        event_type=SendEvents.CONVERSATION_ITEM_CREATE.value,
                         item={
                             "type": "function_call",
                             "name": event.function_call.name or event.function_call.function_name,
@@ -492,7 +493,7 @@ class OpenAIRealtimeBase(OpenAIHandler, RealtimeClientBase):
             case RealtimeFunctionResultEvent():
                 await self._send(
                     _create_openai_realtime_client_event(
-                        event_type='conversation.item.create',
+                        event_type=SendEvents.CONVERSATION_ITEM_CREATE.value,
                         item={
                             "type": "function_call_output",
                             "output": event.function_result.result,
