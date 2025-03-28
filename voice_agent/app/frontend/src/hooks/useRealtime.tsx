@@ -62,10 +62,15 @@ export default function useRealTime({
     }
     
     const sessionKey = getOrCreateSessionKey();
-    
-    const wsEndpoint = useDirectAoaiApi
-        ? `${aoaiEndpointOverride}/openai/realtime?api-key=${aoaiApiKeyOverride}&deployment=${aoaiModelOverride}&api-version=2024-10-01-preview`
-        : `/realtime?session_state_key=${sessionKey}`;
+    // Read the backend URL (which should include protocol, host, and port) from an environment variable.  
+    // For a websocket connection, ensure you use ws:// (or wss://) as needed.  
+    const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL as string || "";  
+    console.log("Backend WebSocket URL:", backendWsUrl);
+
+    const wsEndpoint = useDirectAoaiApi  
+        ? `${aoaiEndpointOverride}/openai/realtime?api-key=${aoaiApiKeyOverride}&deployment=${aoaiModelOverride}&api-version=2024-10-01-preview`  
+        : `${backendWsUrl}/realtime?session_state_key=${sessionKey}`;  
+
     
     const { sendJsonMessage } = useWebSocket(wsEndpoint, {
         onOpen: () => onWebSocketOpen?.(),

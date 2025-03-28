@@ -1,56 +1,93 @@
-Write-Host ""
-Write-Host 'Creating python virtual environment ".venv"'
-Write-Host ""
-Set-Location ./backend
-$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-if (-not $pythonCmd) {
-    # fallback to python3 if python not found
-    $pythonCmd = Get-Command python3 -ErrorAction SilentlyContinue
-}
-Start-Process -FilePath ($pythonCmd).Source -ArgumentList "-m venv .venv" -Wait -NoNewWindow
-
-$directory = Get-Location
-$venvPythonPath = "$directory/.venv/scripts/python.exe"
-if (Test-Path -Path "/usr") {
-  # fallback to Linux venv path
-  $venvPythonPath = "$directory/.venv/bin/python"
-}
-
-Write-Host ""
-Write-Host "Restoring backend python packages"
-Write-Host ""
-Start-Process -FilePath $venvPythonPath -ArgumentList "-m pip install -r requirements.txt" -Wait -NoNewWindow
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to restore backend python packages"
-    exit $LASTEXITCODE
-}
-
-Write-Host ""
-Write-Host "Restoring frontend npm packages"
-Write-Host ""
-Set-Location ../frontend
-npm install
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to restore frontend npm packages"
-    exit $LASTEXITCODE
-}
-
-Write-Host ""
-Write-Host "Building frontend"
-Write-Host ""
-npm run build
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to build frontend"
-    exit $LASTEXITCODE
-}
-
-Write-Host ""
-Write-Host "Starting backend"
-Write-Host ""
-Set-Location ../backend
-Start-Process http://127.0.0.1:8765
-Start-Process -FilePath $venvPythonPath -ArgumentList "-m app --reload" -Wait -NoNewWindow
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to start backend"
-    exit $LASTEXITCODE
-}
+# Write a blank line and a header  
+Write-Host ""  
+Write-Host "Setting up the Python virtual environment for the backend..."  
+  
+# Ensure the backend folder exists and change directory  
+if (-not (Test-Path -Path "backend")) {  
+    Write-Error "backend folder not found."  
+    exit 1  
+}  
+Push-Location "backend"  
+  
+# Create virtual environment if it doesn't exist  
+if (-not (Test-Path -Path ".venv")) {  
+    python -m venv .venv  
+}  
+  
+Write-Host ""  
+Write-Host "Installing backend Python packages..."  
+  
+# Determine the python executable from the virtual environment  
+$venvPython = Join-Path ".venv" "Scripts\python.exe"  
+if (-not (Test-Path -Path $venvPython)) {  
+    Write-Error "Could not find the virtual environment Python executable."  
+    Pop-Location  
+    exit 1  
+}  
+  
+# Install backend packages  
+& $venvPython -m pip install -r requirements.txt  
+if ($LASTEXITCODE -ne 0) {  
+    Write-Error "Backend dependency installation failed."  
+    Pop-Location  
+    exit 1  
+}  
+  
+Write-Host ""  
+Write-Host "Starting backend service (listening on port 8765)..."  
+  
+# Start the backend (using --reload for auto-restart during development)  
+# Start-Process here launches the process asynchronously and returns a process object  
+$backendArgs = @("app.py", "--reload")  
+$backendProc = Start-Process -FilePath $venvPython -ArgumentList $backendArgs -NoNewWindow -PassThru  
+  
+# Return to the root folder  
+Pop-Location  
+  
+Write-Host ""  
+Write-Host "Installing frontend npm packages..."  
+  
+# Ensure the frontend folder exists and change directory  
+if (-not (Test-Path -Path "frontend")) {  
+    Write-Error "frontend folder not found."  
+    exit 1  
+}  
+Push-Location "frontend"  
+  
+# Install frontend packages  
+npm install  
+if ($LASTEXITCODE -ne 0) {  
+    Write-Error "Frontend npm installation failed."  
+    Pop-Location  
+    exit 1  
+}  
+  
+Write-Host ""  
+Write-Host "Starting frontend dev server..."  
+  
+# Start the frontend dev server asynchronously  
+$frontendProc = Start-Process -FilePath "npm" -ArgumentList @("run", "dev") -NoNewWindow -PassThru  
+  
+# Return to the root folder  
+Pop-Location  
+  
+Write-Host ""  
+Write-Host "Both backend and frontend services are running."  
+Write-Host "Press Ctrl+C to stop."  
+  
+# Use a try/finally block so that when the script is interrupted (e.g., by Ctrl+C)  
+# we can clean up the backend and frontend processes  
+try {  
+    while ($true) {  
+        Start-Sleep -Seconds 1  
+    }  
+} finally {  
+    Write-Host "Stopping services..."  
+    if ($backendProc -and -not $backendProc.HasExited) {  
+        Stop-Process -Id $backendProc.Id -Force  
+    }  
+    if ($frontendProc -and -not $frontendProc.HasExited) {  
+        Stop-Process -Id $frontendProc.Id -Force  
+    }  
+    exit 0  
+}  
