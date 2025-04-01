@@ -91,7 +91,7 @@ deploy_container_app() {
       --name "$APP_NAME" \
       --resource-group "$RESOURCE_GROUP" \
       --image "$CONTAINER_REGISTRY.azurecr.io/$IMAGE_NAME" \
-      ${EXTRA_ENV:+--env-vars "$EXTRA_ENV"} || { echo "Error: Failed to update container app $APP_NAME"; exit 1; }  
+      ${EXTRA_ENV:+--replace-env-vars "$EXTRA_ENV"} || { echo "Error: Failed to update container app $APP_NAME"; exit 1; }  
     echo "Container app $APP_NAME updated successfully."  
   fi  
 }  
