@@ -68,11 +68,10 @@ deploy_container_app() {
   local EXTRA_ENV="$4"  
   
   echo "Checking if container app $APP_NAME exists..."  
-  APP_EXISTS=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query name --output tsv 2>/dev/null)  
     
-  if [ -z "$APP_EXISTS" ]; then  
-    echo "Creating container app: $APP_NAME..."  
-    az containerapp create \  
+  if ! az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query name --output tsv 2>/dev/null; then  
+    echo "Creating container app: $APP_NAME..."
+    az containerapp create \
       --name "$APP_NAME" \
       --resource-group "$RESOURCE_GROUP" \
       --environment "$CONTAINER_ENVIRONMENT" \
@@ -109,7 +108,7 @@ echo "Backend FQDN is: $BACKEND_FQDN"
   
 # Construct the WebSocket URL for the frontend  
 # (Adjust the protocol scheme as needed – for example, ws:// versus wss://)  
-FRONTEND_EXTRA_ENV="VITE_BACKEND_WS_URL=wss://$BACKEND_FQDN"  
+FRONTEND_EXTRA_ENV="VITE_BACKEND_WS_URL=wss://$BACKEND_FQDN"
 echo "The frontend will receive: $FRONTEND_EXTRA_ENV as environment variable."  
   
 # Deploy the frontend container app with the extra environment variable  
