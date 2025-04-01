@@ -1,14 +1,17 @@
 #!/bin/bash  
 set -e  
 set -o pipefail  
-  
+
+# Use first parameter as unique identifier for ACR, or default to "RANDOM"
+IDENTIFIER="${1:-RANDOM}"
+
 # Variables  
 RESOURCE_GROUP="rgvoiceagent"  
 LOCATION="westus"  
-CONTAINER_REGISTRY="voiceagentreg001"  
+CONTAINER_REGISTRY="voiceagentreg001$IDENTIFIER"  
 CONTAINER_ENVIRONMENT="voice-agent-env"  
-APP_BACKEND=${1:-"ai-customer-service-backend"}  
-APP_FRONTEND=${2:-"ai-customer-service-frontend"}  
+APP_BACKEND=${2:-"ai-customer-service-backend"}  
+APP_FRONTEND=${3:-"ai-customer-service-frontend"}  
 BACKEND_PORT=8765  
 FRONTEND_PORT=80  
   
@@ -16,10 +19,10 @@ FRONTEND_PORT=80
 TIMESTAMP=$(date +%Y%m%d%H%M%S)  
 BACKEND_IMAGE="backend:$TIMESTAMP"  
 FRONTEND_IMAGE="frontend:$TIMESTAMP"  
-  
+
 # Validate prerequisites  
-if ! command -v az &> /dev/null || ! command -v docker &> /dev/null || ! az account show &> /dev/null; then  
-  echo "Ensure Azure CLI, Docker, and Azure login are configured."  
+if ! command -v az &> /dev/null || ! az account show &> /dev/null; then  
+  echo "Ensure Azure CLI, and Azure login are configured."  
   exit 1  
 fi  
   
@@ -41,10 +44,10 @@ az acr login --name "$CONTAINER_REGISTRY"
   
 # Build and push the Docker images for backend and frontend  
 echo "Building and pushing backend Docker image: $BACKEND_IMAGE..."  
-az acr build --registry "$CONTAINER_REGISTRY" --image "$BACKEND_IMAGE" --file Dockerfile.backend .  
-  
-echo "Building and pushing frontend Docker image: $FRONTEND_IMAGE..."  
-az acr build --registry "$CONTAINER_REGISTRY" --image "$FRONTEND_IMAGE" --file Dockerfile.frontend .  
+az acr build --registry "$CONTAINER_REGISTRY" --image "$BACKEND_IMAGE" --file backend/Dockerfile backend/
+
+echo "Building and pushing frontend Docker image: $FRONTEND_IMAGE..." 
+az acr build --registry "$CONTAINER_REGISTRY" --image "$FRONTEND_IMAGE" --file frontend/Dockerfile frontend/
   
 # Ensure container environment exists (idempotency)  
 echo "Checking if container environment $CONTAINER_ENVIRONMENT exists..."  
@@ -68,11 +71,11 @@ deploy_container_app() {
   local EXTRA_ENV="$4"  
   
   echo "Checking if container app $APP_NAME exists..."  
-  APP_EXISTS=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query name --output tsv 2>/dev/null)  
-    
+  APP_EXISTS=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query name --output tsv 2>/dev/null || true)  
+
   if [ -z "$APP_EXISTS" ]; then  
-    echo "Creating container app: $APP_NAME..."  
-    az containerapp create \  
+    echo "Creating container app: $APP_NAME..."
+    az containerapp create \
       --name "$APP_NAME" \
       --resource-group "$RESOURCE_GROUP" \
       --environment "$CONTAINER_ENVIRONMENT" \
@@ -80,11 +83,11 @@ deploy_container_app() {
       --min-replicas 1 \
       --max-replicas 1 \
       --target-port "$PORT" \
-      ${EXTRA_ENV:+--env-vars "$EXTRA_ENV"} \
       --registry-server "$CONTAINER_REGISTRY.azurecr.io" \
       --registry-username "$ACR_USERNAME" \
       --registry-password "$ACR_PASSWORD" \
-      --ingress external || { echo "Error: Failed to create container app $APP_NAME"; exit 1; }  
+      --ingress external \
+      ${EXTRA_ENV:+--env-vars "$EXTRA_ENV"} | { echo "Error: Failed to create container app $APP_NAME"; exit 1; }
     echo "Container app $APP_NAME created successfully."  
   else  
     echo "Updating container app: $APP_NAME..."
@@ -96,9 +99,12 @@ deploy_container_app() {
     echo "Container app $APP_NAME updated successfully."  
   fi  
 }  
-  
-# Deploy backend container app (without any extra env vars)  
-deploy_container_app "$APP_BACKEND" "$BACKEND_IMAGE" "$BACKEND_PORT" ""  
+
+# Extract environment variables from the backend .env file
+BACKEND_EXTRA_ENV=$(grep -v '^\s*#' backend/.env | sed 's/\s*#.*//' | xargs)
+
+# Deploy backend container app (with the extracted environment variables)  
+deploy_container_app "$APP_BACKEND" "$BACKEND_IMAGE" "$BACKEND_PORT" "$BACKEND_EXTRA_ENV"  
   
 # Give the backend a moment to start up (and for its ingress FQDN to be set)  
 sleep 10  
