@@ -28,11 +28,15 @@ from semantic_kernel import Kernel
 from semantic_kernel.connectors.ai.open_ai import (  
     AzureRealtimeExecutionSettings,  
     AzureRealtimeWebsocket,
-    TurnDetection  
+    TurnDetection,
+    ListenEvents,
+    SendEvents,
 )  
 from openai.types.beta.realtime import (
     ResponseAudioTranscriptDoneEvent,
-    ConversationItemInputAudioTranscriptionCompletedEvent
+    ConversationItemInputAudioTranscriptionCompletedEvent,
+    ResponseDoneEvent,
+    ResponseCreatedEvent
 )
 from semantic_kernel.contents import (  
     AudioContent,  
@@ -54,7 +58,7 @@ class RTMiddleTier:
     agents: list[dict] = []
     agent_names: list[str] = []
     temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 256
+    max_tokens: Optional[int] = 2000
     disable_audio: Optional[bool] = False
     max_history_length = 3
     _token_provider = None
@@ -192,7 +196,7 @@ class RTMiddleTier:
         )  
 
         realtime_client = AzureRealtimeWebsocket()  
-
+        
         async with realtime_client(settings=session["realtime_settings"], kernel=session["current_agent_kernel"]):  
 
             async def from_client_to_realtime():  
@@ -205,20 +209,22 @@ class RTMiddleTier:
                             continue  
                         msg_type = message.get("type")  
                         # Client session.update commands (unused in this example)  
-                        if msg_type == "session.update":  
+                        if msg_type == SendEvents.SESSION_UPDATE:  
                             pass  
                         # Forward appended audio from the client.  
-                        elif msg_type == "input_audio_buffer.append":  
+                        elif msg_type == SendEvents.INPUT_AUDIO_BUFFER_APPEND:  
                             audio_data = message.get("audio")  
                             if audio_data:  
-                                audio_event = RealtimeAudioEvent(  
-                                    audio=AudioContent(data=audio_data, data_format="base64")  
-                                )  
-                                await realtime_client.send(audio_event)  
+                                await realtime_client.send(
+                                    event=RealtimeAudioEvent(
+                                        audio=AudioContent(data=audio_data, data_format="base64"),
+                                    )
+                                )
+
                         # Forward clear-buffer commands.  
-                        elif msg_type == "input_audio_buffer.clear":  
+                        elif msg_type == SendEvents.INPUT_AUDIO_BUFFER_CLEAR:  
                             clear_event = RealtimeEvent(  
-                                service_type="input_audio_buffer.clear",  
+                                service_type=SendEvents.INPUT_AUDIO_BUFFER_CLEAR.value,  
                             )  
                             await realtime_client.send(clear_event)  
                         else:  
@@ -276,11 +282,24 @@ class RTMiddleTier:
                                     await self._detect_intent_change(session)  
                                     if session.get("target_agent_name") is not None:  
                                         await self._reinitialize_session(realtime_client, session)  
-                                    # Generate response once intent is detected or agent swap (if any) is complete.  
-                                    await realtime_client.send(RealtimeEvent(service_type="response.create"))  
+                                    
+                                    # Generate response once intent is detected or agent swap (if any) is complete.
+                                    if session["active_response"] == False:
+                                        await realtime_client.send(RealtimeEvent(service_type="response.create"))
+                            
                             if len(session["history"]) > self.max_history_length:  
                                 session["history"].pop(0)  
                             self.session_state.set(session_state_key, session["history"])  
+                        
+                        elif isinstance(event.service_event, ResponseCreatedEvent):
+                            session["active_response"] = True
+                        
+                        elif isinstance(event.service_event, ResponseDoneEvent):
+                            session["active_response"] = False
+                            if event.service_event.response.status != "completed":   
+                                logger.info("response.done event status: %s", event.service_event.response.status) 
+                                logger.info("response.done event status reason: %s", event.service_event.response.status_details.reason) 
+                        
                         else:  
                             # For other events, convert any pydantic models to a dictionary.  
                             e_payload = event.service_event  
@@ -320,7 +339,8 @@ class RTMiddleTier:
                     "current_agent_kernel": self.default_agent_kernel,  
                     "history": init_history,  
                     "target_agent_name": None,  
-                    "transfer_conversation": False,  
+                    "transfer_conversation": False,
+                    "active_response": False, 
                     "realtime_settings": None,  
                     "customer_name": customer_name,  
                     "customer_id": customer_id,  

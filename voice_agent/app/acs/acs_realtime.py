@@ -256,6 +256,10 @@ async def acs_realtime_bridge():
                                 except Exception as send_err:  
                                     logger.error("Error sending realtime event to ACS: %s", send_err)  
                                     break  
+                            elif message and message.get("type") == "input_audio_buffer.speech_started": #to interrupt the model's audio output
+
+                                    await websocket.send(json.dumps({"Kind": "StopAudio", "AudioData": None, "StopAudio": {}}))
+
                             else:  
                                 logger.debug("Unhandled realtime message: %s", message)  
                         elif msg.type == aiohttp.WSMsgType.ERROR:  
