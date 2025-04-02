@@ -69,7 +69,7 @@ deploy_container_app() {
   echo "Checking if container app $APP_NAME exists..." 
   if ! az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query name --output tsv 2>/dev/null; then
     echo "Creating container app: $APP_NAME..."
-    az containerapp create \  
+    az containerapp create \
       --name "$APP_NAME" \
       --resource-group "$RESOURCE_GROUP" \
       --environment "$CONTAINER_ENVIRONMENT" \
