@@ -2,12 +2,12 @@
 FROM node:18-alpine AS build  
 WORKDIR /app  
   
-# Copy frontend package files and install dependencies  
-COPY frontend/package*.json ./  
+# Copy package files and install dependencies  
+COPY package*.json ./  
 RUN npm install  
   
-# Copy the rest of the frontend code and build the app  
-COPY frontend/ ./  
+# Copy the frontend source code and build the application  
+COPY . .  
 RUN npm run build  
   
 # Stage 2: Build the dynamic Node.js server image  
@@ -18,11 +18,11 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist  
   
 # Copy the dynamic server code  
-COPY frontend/server.cjs ./  
+COPY server.cjs ./  
   
 # Copy a package.json that includes your production server dependencies (e.g., express)  
 # If your frontend/package.json already has express, you can reuse it  
-COPY frontend/package.json ./  
+COPY package.json ./  
   
 # Install only production dependencies  
 RUN npm install --only=production  

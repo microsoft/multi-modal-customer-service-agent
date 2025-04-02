@@ -4,23 +4,29 @@
 ![Design pattern 1](app/backend/static/agent_pic.png)
 
 ## Demo
+
 Watch this video for a demonstration of this pattern's core feature, using intent detection to seamlessly transition between domain specific agents, in addition to the agent specific features for knowledge retrieval and source system interaction.
 
 https://github.com/user-attachments/assets/0b1c711a-efdc-4e69-8048-64f9d409e287
 
 ## Running this sample
+
 We'll follow 4 steps to get this example running in your own environment: pre-requisites, creating an index, setting up the environment, and running the app.
 
-### 1. Pre-requisites
+### Pre-requisites
+
 You'll need instances of the following Azure services. You can re-use service instances you have already or create new ones.
+
 1. [Azure OpenAI](https://ms.portal.azure.com/#create/Microsoft.CognitiveServicesOpenAI), with 2 model deployments, one of the **gpt-4o-realtime-preview** model, a regular **gpt-4o-mini** model.
-2. [Optional] Train an intent_detection model with a SLM using Azure AI Studio. Check [the training data](./intent_detection_model)
-### 2. Setting up the environment
+1. [Optional] Train an intent_detection model with a SLM using Azure AI Studio. Check [the training data](./intent_detection_model)
+
+### Setting up the environment
+
 The app needs to know which service endpoints to use for the Azure OpenAI and Azure AI Search. The following variables can be set as environment variables, or you can create a ".env" file in the "app/backend/" directory with this content.
 
 The voice agent can use a fine-tuned SLM deployment to classify intent to minimize latency. If you do not have this deployment available then you can use the Azure OpenAI **gpt-4o-mini** deployment, which is fast enough to classify intent with minimal impact on latency. To use **gpt-4o-mini** leave the `INTENT_SHIFT_API_*` env variables empty and supply `AZURE_OPENAI_4O_MINI_DEPLOYMENT`.
 
-   ```
+```bash
 AZURE_OPENAI_ENDPOINT="https://.openai.azure.com/"
 AZURE_OPENAI_API_KEY=
 AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
@@ -32,13 +38,13 @@ INTENT_SHIFT_API_KEY=
 INTENT_SHIFT_API_URL=https://YOUR_ML_DEPLOYMENT.westus2.inference.ml.azure.com/score
 INTENT_SHIFT_API_DEPLOYMENT=YOUR_ML_DEPLOYMENT_NAME
 AZURE_OPENAI_API_VERSION=2024-10-01-preview
-AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME=gpt-4o-realtime-preview
+AZURE_OPENAI_RT_DEPLOYMENT=gpt-4o-realtime-preview
+```
 
-   ```
-
-### 4. Running the app
+### Running the app
 
 #### GitHub Codespaces
+
 You can run this repo virtually by using GitHub Codespaces, which will open a web-based VS Code in your browser:
 
 [![Open in GitHub Codespaces](https://img.shields.io/static/v1?style=for-the-badge&label=GitHub+Codespaces&message=Open&color=brightgreen&logo=github)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&skip_quickstart=true&machine=basicLinux32gb&repo=840462613&devcontainer_path=.devcontainer%2Fdevcontainer.json&geo=WestUs2)
@@ -46,6 +52,7 @@ You can run this repo virtually by using GitHub Codespaces, which will open a we
 Once the codespace opens (this may take several minutes), open a new terminal.
 
 #### VS Code Dev Containers
+
 You can run the project in your local VS Code Dev Container using the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers):
 
 1. Start Docker Desktop (install it if not already installed)
@@ -55,6 +62,7 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
 3. In the VS Code window that opens, once the project files show up (this may take several minutes), open a new terminal.
 
 #### Local environment
+
 1. Install the required tools:
    - [Node.js](https://nodejs.org/en)
    - [Python >=3.11](https://www.python.org/downloads/)
@@ -62,9 +70,9 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
       - **Important**: Ensure you can run `python --version` from console. On Ubuntu, you might need to run `sudo apt install python-is-python3` to link `python` to `python3`.
    - [Powershell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
 
-2. Clone the repo (`git clone https://github.com/microsoft/multi-modal-customer-service-agent`)
-4. Ensure env variables are set per [Setting up the environment](#2-setting-up-the-environment)
-5. Run this command to start the app:
+1. Clone the repo (`git clone https://github.com/microsoft/multi-modal-customer-service-agent`)
+1. Ensure env variables are set per [Setting up the environment](#2-setting-up-the-environment)
+1. Run this command to start the app:
 
    Windows:
 
@@ -80,6 +88,38 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
    ./start.sh
    ```
 
-6. The app is available on http://localhost:8765
+1. The app is available on http://localhost:8765
 
+#### Deploy to Azure using azd
 
+1. Change directory to:
+
+   ```bash
+   cd voice_agent/app
+   ```
+
+1. Execute this command:
+
+   ```bash
+   azd up
+   ```
+
+1. When prompted provided the following names:
+   1. Environment name (used as the name of the new resource group to deploy into)
+   1. Azure Subscription to use
+   1. Azure location to use
+
+##### Troubleshooting
+
+If the following error is observed during `deploy_azure.sh` execution:
+
+```bash
+Packing source code into tar to upload...
+[WinError 3] The system cannot find the path specified: '.\\frontend\\node_modules\\frontend\\node_modules\\frontend\\node_modules\\frontend\\node_modules\\frontend\\node_modules\\@babel\\helper-module-transforms\\lib\\normalize-and-load-metadata.js'
+```
+
+Execute this command to clear out `node_modules` directory:
+
+```bash
+rm -rf frontend\node_modules
+```

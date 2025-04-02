@@ -5,11 +5,11 @@ FROM python:3.11
 WORKDIR /app  
   
 # Install Python dependencies  
-COPY backend/requirements.txt .  
+COPY requirements.txt .  
 RUN pip install --no-cache-dir -r requirements.txt  
   
 # Copy backend source code  
-COPY backend/ .  
+COPY . .  
   
 # Expose the backend port  
 EXPOSE 8765  
