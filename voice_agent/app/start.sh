@@ -37,7 +37,7 @@ npm install || { echo "Frontend npm installation failed."; exit 1; }
 # • This file can contain environment variables such as BACKEND_WS_URL that Vite will load.  
 #  
 # Example .env file:  
-# BACKEND_WS_URL="ws://localhost:8765"  
+# VITE_BACKEND_WS_URL="ws://localhost:8765"  
   
 echo ""  
 echo "Starting frontend dev server..."  

@@ -1,28 +1,33 @@
-# Stage 1: Build the frontend code using Node.js  
+# Stage 1: Build the React app  
 FROM node:18-alpine AS build  
-  
-# Set the working directory  
 WORKDIR /app  
   
-# Copy package files and install dependencies  
+# Copy frontend package files and install dependencies  
 COPY frontend/package*.json ./  
 RUN npm install  
   
-# Copy the frontend source code and build the application  
-COPY frontend/ .  
+# Copy the rest of the frontend code and build the app  
+COPY frontend/ ./  
 RUN npm run build  
   
-# Stage 2: Serve the static site using Nginx  
-FROM nginx:alpine  
+# Stage 2: Build the dynamic Node.js server image  
+FROM node:18-alpine  
+WORKDIR /app  
   
-# Copy the production build from the previous stage  
-COPY --from=build /app/dist /usr/share/nginx/html  
+# Copy the built frontend assets  
+COPY --from=build /app/dist ./dist  
   
-# Optionally copy a custom Nginx config (if needed for routing)  
-# COPY nginx.conf /etc/nginx/nginx.conf  
+# Copy the dynamic server code  
+COPY frontend/server.cjs ./  
   
-# Expose port 80 for HTTP traffic  
-EXPOSE 80  
+# Copy a package.json that includes your production server dependencies (e.g., express)  
+# If your frontend/package.json already has express, you can reuse it  
+COPY frontend/package.json ./  
   
-# Start Nginx  
-CMD ["nginx", "-g", "daemon off;"]  
+# Install only production dependencies  
+RUN npm install --only=production  
+  
+# Expose port 3000 (the dynamic server listens on this port)  
+EXPOSE 3000  
+  
+CMD ["node", "server.cjs"]  
