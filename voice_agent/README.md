@@ -90,21 +90,6 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
 
 1. The app is available on http://localhost:8765
 
-#### Deploy to Azure
-
-Change directory to:
-
-```bash
-cd voice_agent/app
-```
-
-Run the following command (assumes `backend\.env` is populated with required backend variables):
-
-```bash
-UNIQUE_IDENTIFIER=$RANDOM
-./deploy_azure.sh $UNIQUE_IDENTIFIER
-```
-
 #### Deploy to Azure using azd
 
 1. Change directory to:

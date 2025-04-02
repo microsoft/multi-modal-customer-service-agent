@@ -36,6 +36,8 @@ type managedIdentity = {
 @description('Unique identifier for user-assigned managed identity.')
 param userAssignedManagedIdentity managedIdentity
 
+@description('Container Port')
+param containerPort int = 3000
 
 module frontend '../core/host/container-app-upsert.bicep' = {
   name: 'frontendContainerApp'
@@ -65,6 +67,7 @@ module frontend '../core/host/container-app-upsert.bicep' = {
         value: replace(viteBackendWsUrl, 'https', 'wss')
       }
     ]
+    targetPort: containerPort
   }
 }
 

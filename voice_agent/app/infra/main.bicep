@@ -132,7 +132,7 @@ module containerApps 'core/host/container-apps.bicep' = {
   }
 }
 
-module aiServices './core/ai-services.bicep' = {
+module aiServices './core/ai/ai-services.bicep' = {
   name: 'ai-services'
   scope: resourceGroup
   params: {

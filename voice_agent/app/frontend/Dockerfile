@@ -18,11 +18,11 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist  
   
 # Copy the dynamic server code  
-COPY frontend/server.cjs ./  
+COPY server.cjs ./  
   
 # Copy a package.json that includes your production server dependencies (e.g., express)  
 # If your frontend/package.json already has express, you can reuse it  
-COPY frontend/package.json ./  
+COPY package.json ./  
   
 # Install only production dependencies  
 RUN npm install --only=production  
