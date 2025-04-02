@@ -38,7 +38,7 @@ INTENT_SHIFT_API_KEY=
 INTENT_SHIFT_API_URL=https://YOUR_ML_DEPLOYMENT.westus2.inference.ml.azure.com/score
 INTENT_SHIFT_API_DEPLOYMENT=YOUR_ML_DEPLOYMENT_NAME
 AZURE_OPENAI_API_VERSION=2024-10-01-preview
-AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME=gpt-4o-realtime-preview
+AZURE_OPENAI_RT_DEPLOYMENT=gpt-4o-realtime-preview
 ```
 
 ### Running the app
@@ -105,6 +105,24 @@ UNIQUE_IDENTIFIER=$RANDOM
 ./deploy_azure.sh $UNIQUE_IDENTIFIER
 ```
 
+#### Deploy to Azure using azd
+
+1. Change directory to:
+
+   ```bash
+   cd voice_agent/app
+   ```
+
+1. Execute this command:
+
+   ```bash
+   azd up
+   ```
+
+1. When prompted provided the following names:
+   1. Environment name (used as the name of the new resource group to deploy into)
+   1. Azure Subscription to use
+   1. Azure location to use
 
 ##### Troubleshooting
 
