@@ -10,7 +10,13 @@ console.log("process.env.VITE_BACKEND_WS_URL =", process.env.VITE_BACKEND_WS_URL
 
   
 // Serve static files from the "dist" folder  
-app.use(express.static(path.join(__dirname, "dist")));  
+app.use((req, res, next) => {
+  if (req.path === "/" || req.path === "/index.html") {
+    next();
+  } else {
+    express.static(path.join(__dirname, "dist"))(req, res, next);
+  }
+});  
   
 // For any route, read index.html and inject the runtime config before sending  
 app.get("/*", (req, res) => {  
