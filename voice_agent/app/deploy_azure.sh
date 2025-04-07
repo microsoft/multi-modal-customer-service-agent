@@ -3,12 +3,12 @@ set -e
 set -o pipefail  
   
 # Variables  
-RESOURCE_GROUP="rgvoiceagent"  
+RESOURCE_GROUP="rgvoiceagent2"  
 LOCATION="westus"  
-CONTAINER_REGISTRY="voiceagentreg001"  
-CONTAINER_ENVIRONMENT="voice-agent-env"  
-APP_BACKEND=${1:-"ai-customer-service-backend"}  
-APP_FRONTEND=${2:-"ai-customer-service-frontend"}  
+CONTAINER_REGISTRY="voiceagentreg002"  
+CONTAINER_ENVIRONMENT="voice-agent-env2"  
+APP_BACKEND=${1:-"ai-customer-service-backend2"}  
+APP_FRONTEND=${2:-"ai-customer-service-frontend2"}  
 BACKEND_PORT=8765  
 FRONTEND_PORT=3000 # Updated port for dynamic Node server  
   
