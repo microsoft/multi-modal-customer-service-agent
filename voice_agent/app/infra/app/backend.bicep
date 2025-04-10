@@ -4,35 +4,20 @@ param location string = resourceGroup().location
 @description('Tags that will be applied to all resources')
 param tags object = {}
 
-// @description('Storage account name')
-// param storageAccountName string
-
-// @description('Blob container name')
-// param blobContainerName string
-
 @description('Cognitive Services account name')
 param cognitiveServicesAccountName string = ''
 
 @description('API version for Cognitive Services operations')
 param cognitiveServicesApiVersion string = '2023-05-01'
 
-@description('OpenAI deployment name')
-param openAiChatDeploymentName string = ''
-
-@description('OpenAI embedding deployment name')
-param openAiEmbeddingDeploymentName string = ''
+@description('OpenAI API version')
+param openAiApiVersion string = '2024-10-01-preview'
 
 @description('OpenAI 4o mini deployment name')
 param openAi4oMiniDeploymentName string = ''
 
 @description('OpenAI Realtime deployment name')
 param openAiRealtimeDeploymentName string = ''
-
-//@description('Resource token for unique resource naming')
-//param resourceToken string
-
-//@description('Abbreviations to use for resource naming')
-//param abbrs object
 
 @description('The name of the Application Insights')
 param applicationInsightsName string
@@ -71,7 +56,7 @@ param serviceName string = 'backend'
 
 var azureOpenAiEndpoint = reference(resourceId('Microsoft.CognitiveServices/accounts', cognitiveServicesAccountName), cognitiveServicesApiVersion).endpoint
 
-// Deploy Summarize Video Content Container App
+// Deploy Backend Voice Agent Container App
 module backend '../core/host/container-app-upsert.bicep' = {
   name: 'backendContainerApp'
   params: {
@@ -102,47 +87,19 @@ module backend '../core/host/container-app-upsert.bicep' = {
         value: azureOpenAiEndpoint
       }      
       { 
-        name: 'AZURE_OPENAI_RT_ENDPOINT'
-        value: azureOpenAiEndpoint
-      }
-      { 
-        name: 'AZURE_OPENAI_EMB_ENDPOINT'
-        value: azureOpenAiEndpoint
-      }
-      { 
         name: 'AZURE_OPENAI_API_VERSION'
-        value: '2023-05-15'
-      }
-      { 
-        name: 'AZURE_OPENAI_CHAT_KEY'
-        secretRef: 'azure-openai-key' 
-      }
-      { 
-        name: 'AZURE_OPENAI_EMB_KEY'
-        secretRef: 'azure-openai-key' 
-      }
-      { 
-        name: 'AZURE_OPENAI_RT_API_KEY'
-        secretRef: 'azure-openai-key' 
+        value: openAiApiVersion
       }
       { 
         name: 'AZURE_OPENAI_API_KEY' 
         secretRef: 'azure-openai-key' 
       }
       { 
-        name: 'AZURE_OPENAI_CHAT_DEPLOYMENT'
-        value: openAiChatDeploymentName
-      }
-      { 
         name: 'AZURE_OPENAI_4O_MINI_DEPLOYMENT'
         value: openAi4oMiniDeploymentName
       }
       { 
-        name: 'AZURE_OPENAI_EMB_DEPLOYMENT' 
-        value: openAiEmbeddingDeploymentName
-      }
-      { 
-        name: 'AZURE_OPENAI_RT_DEPLOYMENT'
+        name: 'AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME'
         value: openAiRealtimeDeploymentName 
       }
     ]

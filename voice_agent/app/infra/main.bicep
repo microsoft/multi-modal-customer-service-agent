@@ -174,10 +174,8 @@ module backendApp './app/backend.bicep' = {
     userAssignedRoleClientId: identity.outputs.clientId
     exists: backendExists
     cognitiveServicesAccountName: aiServices.outputs.cognitiveServicesAccountName
-    openAiChatDeploymentName: aiServices.outputs.chatModelDeploymentName
     openAi4oMiniDeploymentName: aiServices.outputs.gpt4oMiniModelDeploymentName
     openAiRealtimeDeploymentName: aiServices.outputs.realtimeModelDeploymentName
-    openAiEmbeddingDeploymentName: aiServices.outputs.embeddingModelDeploymentName
   }
 }
 
@@ -310,5 +308,4 @@ output SERVICE_FRONTEND_IDENTITY_NAME string = frontendApp.outputs.SERVICE_FRONT
 output SERVICE_FRONTEND_NAME string = frontendApp.outputs.SERVICE_FRONTEND_NAME
 output SERVICE_BACKEND_IDENTITY_NAME string = backendApp.outputs.SERVICE_BACKEND_IDENTITY_NAME
 output SERVICE_BACKEND_NAME string = backendApp.outputs.SERVICE_BACKEND_NAME
-// output AZURE_STORAGE_ACCOUNT_NAME string = coreInfra.outputs.storageAccountName
-// output AZURE_STORAGE_CONTAINER_NAME string = coreInfra.outputs.blobContainerName
+

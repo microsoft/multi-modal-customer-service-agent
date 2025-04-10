@@ -29,6 +29,7 @@ The voice agent can use a fine-tuned SLM deployment to classify intent to minimi
 ```bash
 AZURE_OPENAI_ENDPOINT="https://.openai.azure.com/"
 AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_API_VERSION=2024-10-01-preview
 AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
 AZURE_OPENAI_EMB_DEPLOYMENT="text-embedding-ada-002"
 AZURE_OPENAI_EMB_ENDPOINT= [Optional] if different from your realtime endpoint
@@ -38,7 +39,7 @@ INTENT_SHIFT_API_KEY=
 INTENT_SHIFT_API_URL=https://YOUR_ML_DEPLOYMENT.westus2.inference.ml.azure.com/score
 INTENT_SHIFT_API_DEPLOYMENT=YOUR_ML_DEPLOYMENT_NAME
 AZURE_OPENAI_API_VERSION=2024-10-01-preview
-AZURE_OPENAI_RT_DEPLOYMENT=gpt-4o-realtime-preview
+AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME=gpt-4o-realtime-preview
 ```
 
 ### Running the app
@@ -92,6 +93,8 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
 
 #### Deploy to Azure using azd
 
+1. Download and install [azd](https://aka.ms/azd/install) (Azure Developer CLI)
+
 1. Change directory to:
 
    ```bash
@@ -108,18 +111,3 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
    1. Environment name (used as the name of the new resource group to deploy into)
    1. Azure Subscription to use
    1. Azure location to use
-
-##### Troubleshooting
-
-If the following error is observed during `deploy_azure.sh` execution:
-
-```bash
-Packing source code into tar to upload...
-[WinError 3] The system cannot find the path specified: '.\\frontend\\node_modules\\frontend\\node_modules\\frontend\\node_modules\\frontend\\node_modules\\frontend\\node_modules\\@babel\\helper-module-transforms\\lib\\normalize-and-load-metadata.js'
-```
-
-Execute this command to clear out `node_modules` directory:
-
-```bash
-rm -rf frontend\node_modules
-```
