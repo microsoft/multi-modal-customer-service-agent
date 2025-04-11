@@ -19,8 +19,13 @@ if __name__ == "__main__":
 
     rtmt = RTMiddleTier(llm_endpoint, llm_deployment, AzureKeyCredential(llm_key) if llm_key else credentials)
 
-    rtmt.attach_to_app(app, "/realtime")
+    # Attach your realtime endpoint only. (Remove serving the frontend static files)  
+    rtmt.attach_to_app(app, "/realtime")  
+    
+    # Optional: define a basic route for health-checks  
+    app.add_routes([  
+        web.get('/', lambda request: web.json_response({"message": "Backend API is running."}))  
+    ])  
 
-    app.add_routes([web.get('/', lambda _: web.FileResponse('./static/index.html'))])
-    app.router.add_static('/', path='./static', name='static')
-    web.run_app(app, host='localhost', port=8765)
+    # Listen on 0.0.0.0 so that the container’s port is reachable externally.  
+    web.run_app(app, host='0.0.0.0', port=8765)  

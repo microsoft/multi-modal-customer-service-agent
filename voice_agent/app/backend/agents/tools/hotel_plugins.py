@@ -23,7 +23,7 @@ AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
   
 # SQLAlchemy setup  
 Base = declarative_base()  
-engine = create_engine('sqlite:///../data/hotel.db')  
+engine = create_engine('sqlite:///./data/hotel.db')  
 Session = sessionmaker(bind=engine)  
 session = Session()  
   
@@ -75,7 +75,7 @@ class SearchClient:
         cosine_list = cosine_list[:topk]  
   
         return "\n".join(f"{chunk_id}\n{content}" for chunk_id, content, _ in cosine_list)  
-search_client =SearchClient("../data/hotel_policy.json")
+search_client =SearchClient("./data/hotel_policy.json")
 # Utility function for querying reservations  
 def query_reservation_by_id(reservation_id: str):  
     return session.query(Reservation).filter_by(id=reservation_id, status="booked").first()  
