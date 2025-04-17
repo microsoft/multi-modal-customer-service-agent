@@ -32,14 +32,9 @@ from semantic_kernel.connectors.ai.open_ai import (
     ListenEvents,
     SendEvents,
 )  
-from openai.types.beta.realtime import (
-    ResponseAudioTranscriptDoneEvent,
-    ConversationItemInputAudioTranscriptionCompletedEvent,
-    ResponseDoneEvent,
-    ResponseCreatedEvent
-)
 from semantic_kernel.contents import (  
     AudioContent,  
+    ChatHistoryTruncationReducer,
     RealtimeTextEvent,  
     RealtimeAudioEvent,  
     RealtimeEvent,
@@ -140,7 +135,7 @@ class RTMiddleTier:
     async def _detect_intent_change(self, session: dict):  
         # Use the session’s own conversation history and current agent.  
         extracted_history = [  
-            f"{item['item']['role']}: {item['item']['content'][0]['text']}" for item in session["history"]  
+            f"{item.role.value}: {item.items[0].text}" for item in session["history"]  
         ]  
         logger.info("Current agent: %s", session["current_agent"].get("name"))  
         conversation = "\n".join(extracted_history)  
@@ -197,7 +192,11 @@ class RTMiddleTier:
 
         realtime_client = AzureRealtimeWebsocket()  
         
-        async with realtime_client(settings=session["realtime_settings"], kernel=session["current_agent_kernel"]):  
+        async with realtime_client(
+            settings=session["realtime_settings"], 
+            kernel=session["current_agent_kernel"], 
+            chat_history=session["history"]
+        ):  
 
             async def from_client_to_realtime():  
                 async for msg in ws:  
@@ -234,80 +233,62 @@ class RTMiddleTier:
 
             async def from_realtime_to_client():  
                 async for event in realtime_client.receive():  
-                    try:  
-                        if isinstance(event, RealtimeAudioEvent):  
+                    match event:
+                        case RealtimeAudioEvent():  
                             audio_data = event.audio.data  
                             audio_base64 = base64.b64encode(audio_data).decode('ascii')  
                             await ws.send_json({  
                                 "type": "response.audio.delta",  
                                 "delta": audio_base64  
                             })  
-                        elif isinstance(event.service_event, ResponseAudioTranscriptDoneEvent):  
-                            logger.info("Received response transcription.completed event: %s", event.service_event.transcript)  
-                            transcript = event.service_event.transcript  
-                            session["history"].append({  
-                                "type": "conversation.item.create",  
-                                "item": {  
-                                    "type": "message",  
-                                    "status": "completed",  
-                                    "role": "assistant",  
-                                    "content": [{  
-                                        "type": "text",  
-                                        "text": transcript  
-                                    }]  
-                                }  
-                            })  
-                            # Retain only the last n turns.  
-                            session["history"] = session["history"][-self.max_history_length:]  
-                            self.session_state.set(session_state_key, session["history"])  
+                        case _:
+                            match event.service_type:
+                                case ListenEvents.RESPONSE_AUDIO_TRANSCRIPT_DONE:  
+                                    logger.info("Received response transcription.completed event: %s", event.service_event.transcript)  
+                                    transcript = event.service_event.transcript 
+                                    session["history"].add_assistant_message(transcript) 
 
-                        elif isinstance(event.service_event, ConversationItemInputAudioTranscriptionCompletedEvent):  
-                            logger.info("Received input transcription.completed event: %s", event.service_event.transcript)  
-                            transcript = event.service_event.transcript  
-                            if len(transcript) > 0:  
-                                session["history"].append({  
-                                    "type": "conversation.item.create",  
-                                    "item": {  
-                                        "type": "message",  
-                                        "status": "completed",  
-                                        "role": "user",  
-                                        "content": [{  
-                                            "type": "input_text",  
-                                            "text": transcript  
-                                        }]  
-                                    }  
-                                })  
-                                # Trigger intent detection – if enabled – so that conversation can be transferred.  
-                                if self.use_classification_model:  
-                                    await self._detect_intent_change(session)  
-                                    if session.get("target_agent_name") is not None:  
-                                        await self._reinitialize_session(realtime_client, session)  
+                                    # Retain only the last n turns.  
+                                    await session["history"].reduce()
+                                    self.session_state.set(session_state_key, session["history"])  
+
+                                case ListenEvents.CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED:  
+                                    logger.info("Received input transcription.completed event: %s", event.service_event.transcript)  
+                                    transcript = event.service_event.transcript  
+                                    if len(transcript) > 0: 
+                                        session["history"].add_user_message(transcript) 
+
+                                        # Trigger intent detection – if enabled – so that conversation can be transferred.  
+                                        if self.use_classification_model:  
+                                            await self._detect_intent_change(session)  
+                                            if session.get("target_agent_name") is not None:  
+                                                await self._reinitialize_session(realtime_client, session)  
+                                            
+                                            # Generate response once intent is detected or agent swap (if any) is complete.
+                                            if session["active_response"] == False:
+                                                await realtime_client.send(RealtimeEvent(service_type="response.create"))
                                     
-                                    # Generate response once intent is detected or agent swap (if any) is complete.
-                                    if session["active_response"] == False:
-                                        await realtime_client.send(RealtimeEvent(service_type="response.create"))
-                            
-                            if len(session["history"]) > self.max_history_length:  
-                                session["history"].pop(0)  
-                            self.session_state.set(session_state_key, session["history"])  
+                                    await session["history"].reduce()
+                                    self.session_state.set(session_state_key, session["history"])  
                         
-                        elif isinstance(event.service_event, ResponseCreatedEvent):
-                            session["active_response"] = True
+                                case ListenEvents.RESPONSE_CREATED:
+                                    session["active_response"] = True
                         
-                        elif isinstance(event.service_event, ResponseDoneEvent):
-                            session["active_response"] = False
-                            if event.service_event.response.status != "completed":   
-                                logger.info("response.done event status: %s", event.service_event.response.status) 
-                                logger.info("response.done event status reason: %s", event.service_event.response.status_details.reason) 
+                                case ListenEvents.RESPONSE_DONE:
+                                    session["active_response"] = False
+                                    if event.service_event.response.status != "completed":   
+                                        logger.info("response.done event status: %s", event.service_event.response.status) 
+                                        logger.info("response.done event status reason: %s", event.service_event.response.status_details.reason) 
                         
-                        else:  
-                            # For other events, convert any pydantic models to a dictionary.  
-                            e_payload = event.service_event  
-                            if hasattr(e_payload, "dict"):  
-                                e_payload = e_payload.dict()  
-                            await ws.send_json(e_payload)  
-                    except Exception as e:  
-                        logger.error("Error sending realtime event to client: %s", e)  
+                                case _:  
+                                    try:
+                                        # For other events, convert any pydantic models to a dictionary.  
+                                        e_payload = event.service_event  
+                                        if hasattr(e_payload, "dict"):  
+                                            e_payload = e_payload.dict()  
+                                        await ws.send_json(e_payload)  
+                                    except Exception as e:  
+                                        logger.error("Error sending realtime event to client: %s", e)  
 
             await asyncio.gather(from_client_to_realtime(), from_realtime_to_client())  
 
@@ -329,11 +310,12 @@ class RTMiddleTier:
 
             # Try retrieving any backup conversation from persistent session_state.  
             init_history = self.session_state.get(session_state_key)  
+            logger.info("Initial history: %s", init_history)
             # Check if we already have a session for this key.  
             session = self.sessions.get(session_state_key)  
             if session is None:  
                 if init_history is None:  
-                    init_history = []  
+                    init_history = ChatHistoryTruncationReducer(target_count=self.max_history_length)  
                 session = {  
                     "current_agent": self.default_agent,  
                     "current_agent_kernel": self.default_agent_kernel,  
