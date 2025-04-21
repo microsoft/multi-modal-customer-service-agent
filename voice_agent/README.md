@@ -40,6 +40,18 @@ INTENT_SHIFT_API_URL=https://YOUR_ML_DEPLOYMENT.westus2.inference.ml.azure.com/s
 INTENT_SHIFT_API_DEPLOYMENT=YOUR_ML_DEPLOYMENT_NAME
 AZURE_OPENAI_API_VERSION=2024-10-01-preview
 AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME=gpt-4o-realtime-preview
+[Optional Depending on Loggin Scenario]
+[Console for development]
+TELEMETRY_SCENARIO=console  
+SERVICE_NAME=my-voice-agent-dev  
+[Application Insights]
+TELEMETRY_SCENARIO=application_insights
+APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=...
+SERVICE_NAME=my-voice-agent-prod
+[SK Aspire Dashboard]
+TELEMETRY_SCENARIO=aspire_dashboard  
+ASPIRE_DASHBOARD_ENDPOINT=http://localhost:4317  
+SERVICE_NAME=my-voice-agent-test  
 ```
 
 ### Running the app
