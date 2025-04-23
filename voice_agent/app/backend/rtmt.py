@@ -20,6 +20,7 @@ from azure.core.credentials import AzureKeyCredential
 from utility import detect_intent, SessionState  
 from agents.tools.hotel_plugins import Hotel_Tools
 from agents.tools.flight_plugins import Flight_Tools
+from agents.tools.car_rental_plugins import Car_Rental_Tools
 from semantic_kernel.connectors.ai import FunctionChoiceBehavior
 
   
@@ -114,6 +115,12 @@ class RTMiddleTier:
                             plugin=Flight_Tools(),  
                             plugin_name="flight_tools",  
                             description="tools for flight agent"  
+                        )
+                    elif agent_name == "car_rental_agent":  # Add this section
+                        self.kernels[agent_name].add_plugin(
+                            plugin=Car_Rental_Tools(),
+                            plugin_name="car_rental_tools",
+                            description="tools for car rental agent"
                         )  
                 except yaml.YAMLError as exc:  
                     logger.error("Error loading %s: %s", profile, exc)  

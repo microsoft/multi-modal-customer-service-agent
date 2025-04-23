@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Backend",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/voice_agent/app/backend/app.py",
+            "cwd": "${workspaceFolder}/voice_agent/app/backend",
+            "python": "${workspaceFolder}/voice_agent/app/backend/.venv/Scripts/python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "NPM: Frontend",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/voice_agent/app/frontend",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev"],
+            "env": {
+                "VITE_BACKEND_WS_URL": "ws://localhost:8765"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Stack: Frontend + Backend",
+            "configurations": ["Python: Backend", "NPM: Frontend"]
+        }
+    ]
+}

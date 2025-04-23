@@ -105,7 +105,10 @@ async def detect_intent(conversation):
     else:
         # fallback to gpt-4o-mini
         messages = [
-            {"role": "system", "content": "You are a classifier model whose job is to classify the intent of the most recent user question into one of the following domains:\n\n- **hotel_agent**: Deal with hotel reservations, confirmations, changes, and general hotel policy questions.\n- **flight_agent**: Deal with flight reservations, confirmations, changes, and general airline policy questions.\n\nYou must only respond with the name of the predicted agent."},
+            {"role": "system", "content": "You are a classifier model whose job is to classify the intent of the most recent user question into one of the following domains:\n\n"
+            "- **hotel_agent**: Deal with hotel reservations, confirmations, changes, and general hotel policy questions.\n"
+            "- **flight_agent**: Deal with flight reservations, confirmations, changes, and general airline policy questions.\n"
+            "- **car_rental_agent**: Deal with car rentals, vehicle reservations, changes, and general car rental policy questions.\n\nYou must only respond with the name of the predicted agent."},
             {"role": "user", "content": conversation}
         ]
         response = await async_client.chat.completions.create(

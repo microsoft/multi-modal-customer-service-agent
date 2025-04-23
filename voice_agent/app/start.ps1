@@ -69,7 +69,7 @@ Write-Host "Starting frontend dev server..."
 $env:VITE_BACKEND_WS_URL = "ws://localhost:8765"
 
 # Start the frontend dev server asynchronously  
-$frontendProc = Start-Process -FilePath "npm" -ArgumentList @("run", "dev") -NoNewWindow -PassThru  
+$frontendProc = Start-Process -FilePath "npm.cmd" -ArgumentList @("run", "dev") -NoNewWindow -PassThru  
   
 # Return to the root folder  
 Pop-Location  
