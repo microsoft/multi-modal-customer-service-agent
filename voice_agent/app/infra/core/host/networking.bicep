@@ -35,17 +35,17 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-04-01' = {
     }
     subnets: [
       {
-        name: infrastructureSubnetName
+        name: containerAppsSubnetName
         properties: {
-          addressPrefix: infrastructureSubnetPrefix
+          addressPrefix: containerAppsSubnetPrefix
           privateEndpointNetworkPolicies: 'Disabled'
           privateLinkServiceNetworkPolicies: 'Enabled'
         }
       }
       {
-        name: containerAppsSubnetName
+        name: infrastructureSubnetName
         properties: {
-          addressPrefix: containerAppsSubnetPrefix
+          addressPrefix: infrastructureSubnetPrefix
           delegations: [
             {
               name: 'Microsoft.App.environments'
@@ -57,6 +57,109 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-04-01' = {
         }
       }
     ]
+  }
+}
+
+// Add a Network Security Group (NSG) rule to allow inbound 443 traffic on the container apps subnet
+resource containerAppsSubnetNsg 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
+  name: '${containerAppsSubnetName}-nsg'
+  location: location
+  tags: tags
+  properties: {
+    securityRules: [
+      {
+        name: 'Allow-Inbound-443'
+        properties: {
+          priority: 100
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'Allow-Inbound-Intra-VNet-4317'
+        properties: {
+          priority: 200
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '4317'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'VirtualNetwork'
+        }
+      }
+      {
+        name: 'Allow-Inbound-Intra-VNet-18890'
+        properties: {
+          priority: 201
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '18890'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'VirtualNetwork'
+        }
+      }
+      {
+        name: 'Allow-Outbound-443'
+        properties: {
+          priority: 100
+          direction: 'Outbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'Allow-Outbound-Intra-VNet-4317'
+        properties: {
+          priority: 200
+          direction: 'Outbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '4317'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'VirtualNetwork'
+        }
+      }
+      {
+        name: 'Allow-Outbound-Intra-VNet-18890'
+        properties: {
+          priority: 201
+          direction: 'Outbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '18890'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'VirtualNetwork'
+        }
+      }
+    ]
+  }
+}
+
+// Associate the NSG with the container apps subnet
+resource containerAppsSubnetNsgAssociation 'Microsoft.Network/virtualNetworks/subnets@2023-04-01' = {
+  parent: virtualNetwork
+  name: containerAppsSubnetName
+  properties: {
+    addressPrefix: containerAppsSubnetPrefix
+    networkSecurityGroup: {
+      id: containerAppsSubnetNsg.id
+    }
+    privateEndpointNetworkPolicies: 'Disabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
   }
 }
 
