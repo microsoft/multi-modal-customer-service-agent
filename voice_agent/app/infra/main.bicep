@@ -292,27 +292,6 @@ module aspireDashboard 'core/host/container-app-upsert.bicep' = {
     ]
   }
 }
-module testApp 'core/host/container-app-upsert.bicep' = {
-  name: '${deployment().name}-ta'
-  scope: resourceGroup
-  params: {
-    name: 'test-app'
-    location: location
-    tags: union(tags, { 'azd-service-name': 'test-app' })
-    containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerName: 'test-app'
-    identityName: identity.outputs.name
-    imageName: '${containerApps.outputs.registryLoginServer}/test-app:latest'
-    containerRegistryName: containerApps.outputs.registryName
-    targetPort: 8080
-    env: [
-      {
-        name: 'OTLP_ENDPOINT'
-        value: 'http://${aspireDashboardName}:${aspireDashboardAdditionalGrpcExposedPort}/' // send grpc with http as the transport
-      }
-    ]
-  }
-}
 
 // Add an output for the Aspire Dashboard URL
 output ASPIRE_DASHBOARD_URI string = aspireDashboard.outputs.uri
@@ -388,6 +367,15 @@ module storageContribRoleApi 'core/security/role.bicep' = {
   params: {
     principalId: identity.outputs.principalId
     roleDefinitionId: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+    principalType: 'ServicePrincipal'
+  }
+}
+
+module dataScientistRole 'core/security/subscription-role.bicep' = {
+  name: 'data-scientist-role'
+  params: {
+    principalId: backendApp.outputs.SERVICE_BACKEND_PRINCIPAL_ID
+    roleDefinitionId: 'f6c7c914-8db3-469d-8ca1-694a8f32e121' // Azure ML Data Scientist
     principalType: 'ServicePrincipal'
   }
 }
