@@ -81,14 +81,14 @@ resource containerAppsSubnetNsg 'Microsoft.Network/networkSecurityGroups@2023-04
         }
       }
       {
-        name: 'Allow-Inbound-Intra-VNet-4317'
+        name: 'Allow-Inbound-Intra-VNet-18889'
         properties: {
           priority: 200
           direction: 'Inbound'
           access: 'Allow'
           protocol: 'Tcp'
           sourcePortRange: '*'
-          destinationPortRange: '4317'
+          destinationPortRange: '18889'
           sourceAddressPrefix: 'VirtualNetwork'
           destinationAddressPrefix: 'VirtualNetwork'
         }
@@ -120,14 +120,14 @@ resource containerAppsSubnetNsg 'Microsoft.Network/networkSecurityGroups@2023-04
         }
       }
       {
-        name: 'Allow-Outbound-Intra-VNet-4317'
+        name: 'Allow-Outbound-Intra-VNet-18889'
         properties: {
           priority: 200
           direction: 'Outbound'
           access: 'Allow'
           protocol: 'Tcp'
           sourcePortRange: '*'
-          destinationPortRange: '4317'
+          destinationPortRange: '18889'
           sourceAddressPrefix: 'VirtualNetwork'
           destinationAddressPrefix: 'VirtualNetwork'
         }

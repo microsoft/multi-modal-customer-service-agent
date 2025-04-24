@@ -28,7 +28,7 @@ param aspireDashboardTargetPort int = 18888
 param aspireDashboardImageName string = 'mcr.microsoft.com/dotnet/aspire-dashboard:9.0'
 
 @description('Exposed port for Aspire dashboard additional endpoint for gRPC')
-param aspireDashboardAdditionalGrpcExposedPort int = 4317
+param aspireDashboardAdditionalGrpcExposedPort int = 18889
 
 @description('Target port for Aspire dashboard additional endpoint for gRPC')
 param aspireDashboardAdditionalGrpcTargetPort int = 18889
@@ -289,19 +289,9 @@ module aspireDashboard 'core/host/container-app-upsert.bicep' = {
         name: 'ASPNETCORE_URLS'
         value: 'http://+:${aspireDashboardTargetPort}'
       }
-      {
-        name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
-        value: 'http/protobuf'
-      }
-      {
-        name: 'OTEL_EXPORTER_OTLP_INSECURE'
-        value: 'true'
-      }
     ]
   }
 }
-
-// Update the test-app container app to reference and run test-app/test-app.py
 module testApp 'core/host/container-app-upsert.bicep' = {
   name: '${deployment().name}-ta'
   scope: resourceGroup
@@ -317,16 +307,8 @@ module testApp 'core/host/container-app-upsert.bicep' = {
     targetPort: 8080
     env: [
       {
-        name: 'PYTHONUNBUFFERED'
-        value: '1'
-      }
-      {
-        name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
-        value: 'http/protobuf'
-      }
-      {
-        name: 'OTEL_EXPORTER_OTLP_INSECURE'
-        value: 'true'
+        name: 'OTLP_ENDPOINT'
+        value: 'http://${aspireDashboardName}:${aspireDashboardAdditionalGrpcExposedPort}/' // send grpc with http as the transport
       }
     ]
   }
@@ -435,3 +417,4 @@ output SERVICE_FRONTEND_NAME string = frontendApp.outputs.SERVICE_FRONTEND_NAME
 output SERVICE_BACKEND_IDENTITY_NAME string = backendApp.outputs.SERVICE_BACKEND_IDENTITY_NAME
 output SERVICE_BACKEND_NAME string = backendApp.outputs.SERVICE_BACKEND_NAME
 output ASPIRE_DASHBOARD_FQDN string = aspireDashboard.outputs.defaultDomain
+
