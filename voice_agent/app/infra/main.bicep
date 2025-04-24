@@ -231,7 +231,7 @@ module backendApp './app/backend.bicep' = {
     cognitiveServicesAccountName: aiServices.outputs.cognitiveServicesAccountName
     openAi4oMiniDeploymentName: aiServices.outputs.gpt4oMiniModelDeploymentName
     openAiRealtimeDeploymentName: aiServices.outputs.realtimeModelDeploymentName
-    otlpEndpoint: 'http://${aspireDashboardName}.${containerApps.outputs.defaultDomain}:${aspireDashboardAdditionalGrpcExposedPort}/' // send grpc with http as the transport
+    otlpEndpoint: 'http://${aspireDashboardName}:${aspireDashboardAdditionalGrpcExposedPort}/' // send grpc with http as the transport
   }
 }
 
