@@ -43,6 +43,9 @@ param containerPort int = 8765
 @description('Specifies if the resource exists')
 param exists bool
 
+@description('Endpoint to send OTLP data to for observability')
+param otlpEndpoint string
+
 type managedIdentity = {
   resourceId: string
   clientId: string
@@ -101,6 +104,10 @@ module backend '../core/host/container-app-upsert.bicep' = {
       { 
         name: 'AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME'
         value: openAiRealtimeDeploymentName 
+      }
+      {
+        name: 'ASPIRE_DASHBOARD_ENDPOINT'
+        value: otlpEndpoint
       }
     ]
     targetPort: containerPort

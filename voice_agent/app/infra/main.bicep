@@ -31,7 +31,7 @@ param aspireDashboardImageName string = 'mcr.microsoft.com/dotnet/aspire-dashboa
 param aspireDashboardAdditionalGrpcExposedPort int = 18889
 
 @description('Target port for Aspire dashboard additional endpoint for gRPC')
-param aspireDashboardAdditionalGrpcTargetPort int = 4317
+param aspireDashboardAdditionalGrpcTargetPort int = 18889
 
 @description('Exposed port for Aspire dashboard additional endpoint for HTTP')
 param aspireDashboardAdditionalHttpExposedPort int = 18890
@@ -231,6 +231,7 @@ module backendApp './app/backend.bicep' = {
     cognitiveServicesAccountName: aiServices.outputs.cognitiveServicesAccountName
     openAi4oMiniDeploymentName: aiServices.outputs.gpt4oMiniModelDeploymentName
     openAiRealtimeDeploymentName: aiServices.outputs.realtimeModelDeploymentName
+    otlpEndpoint: 'http://${aspireDashboardName}:${aspireDashboardAdditionalGrpcExposedPort}/' // send grpc with http as the transport
   }
 }
 
@@ -404,3 +405,4 @@ output SERVICE_FRONTEND_NAME string = frontendApp.outputs.SERVICE_FRONTEND_NAME
 output SERVICE_BACKEND_IDENTITY_NAME string = backendApp.outputs.SERVICE_BACKEND_IDENTITY_NAME
 output SERVICE_BACKEND_NAME string = backendApp.outputs.SERVICE_BACKEND_NAME
 output ASPIRE_DASHBOARD_FQDN string = aspireDashboard.outputs.defaultDomain
+
