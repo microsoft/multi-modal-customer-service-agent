@@ -18,27 +18,6 @@ param applicationInsightsDashboardName string = ''
 @description('Name of the Azure Application Insights resource')
 param applicationInsightsName string = ''
 
-@description('Name of the aspire dashboard container app')
-param aspireDashboardName string = 'aspire-dashboard'
-
-@description('Target port for the Aspire dashboard')
-param aspireDashboardTargetPort int = 18888
-
-@description('Image name for the Aspire dashboard')
-param aspireDashboardImageName string = 'mcr.microsoft.com/dotnet/aspire-dashboard:9.0'
-
-@description('Exposed port for Aspire dashboard additional endpoint for gRPC')
-param aspireDashboardAdditionalGrpcExposedPort int = 18889
-
-@description('Target port for Aspire dashboard additional endpoint for gRPC')
-param aspireDashboardAdditionalGrpcTargetPort int = 18889
-
-@description('Exposed port for Aspire dashboard additional endpoint for HTTP')
-param aspireDashboardAdditionalHttpExposedPort int = 18890
-
-@description('Target port for Aspire dashboard additional endpoint for HTTP')
-param aspireDashboardAdditionalHttpTargetPort int = 18890
-
 @description('Name of the Azure Log Analytics workspace')
 param logAnalyticsName string = ''
 
@@ -99,25 +78,6 @@ param principalType string = 'User'
 @description('Name of the resource group for the OpenAI resources')
 param openAiResourceGroupName string = ''
 
-// Add virtual network parameters
-@description('Name of the virtual network')
-param vnetName string = ''
-
-@description('Address prefix for the virtual network')
-param vnetAddressPrefix string = '10.0.0.0/16'
-
-@description('Name for the infrastructure subnet')
-param infrastructureSubnetName string = 'infrastructure-subnet'
-
-@description('Address prefix for the infrastructure subnet')
-param infrastructureSubnetPrefix string = '10.0.0.0/23'
-
-@description('Name for the Container Apps subnet')
-param containerAppsSubnetName string = 'containerapps-subnet'
-
-@description('Address prefix for the Container Apps subnet')
-param containerAppsSubnetPrefix string = '10.0.2.0/23'
-
 // Organize resources in a resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: 'rg-${environmentName}'
@@ -131,22 +91,6 @@ resource storageResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' ex
 
 resource azureOpenAiResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
   name: !empty(openAiResourceGroupName) ? openAiResourceGroupName : resourceGroup.name
-}
-
-// Create networking resources
-module networking './core/host/networking.bicep' = {
-  name: 'networking'
-  scope: resourceGroup
-  params: {
-    location: location
-    tags: tags
-    vnetName: !empty(vnetName) ? vnetName : '${abbrs.networkVirtualNetworks}${resourceToken}'
-    vnetAddressPrefix: vnetAddressPrefix
-    infrastructureSubnetName: infrastructureSubnetName
-    infrastructureSubnetPrefix: infrastructureSubnetPrefix
-    containerAppsSubnetName: containerAppsSubnetName
-    containerAppsSubnetPrefix: containerAppsSubnetPrefix
-  }
 }
 
 // Create a user assigned identity
@@ -183,8 +127,6 @@ module containerApps 'core/host/container-apps.bicep' = {
     containerRegistryResourceGroupName: !empty(containerRegistryResourceGroupName) ? containerRegistryResourceGroupName : resourceGroup.name
     location: location
     logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
-    // Pass the subnet ID to the container apps module
-    infrastructureSubnetId: networking.outputs.infrastructureSubnetId
   }
 }
 
@@ -231,7 +173,6 @@ module backendApp './app/backend.bicep' = {
     cognitiveServicesAccountName: aiServices.outputs.cognitiveServicesAccountName
     openAi4oMiniDeploymentName: aiServices.outputs.gpt4oMiniModelDeploymentName
     openAiRealtimeDeploymentName: aiServices.outputs.realtimeModelDeploymentName
-    otlpEndpoint: 'http://${aspireDashboardName}:${aspireDashboardAdditionalGrpcExposedPort}/' // send grpc with http as the transport
   }
 }
 
@@ -255,46 +196,6 @@ module frontendApp './app/frontend.bicep' = {
     viteBackendWsUrl: backendApp.outputs.SERVICE_BACKEND_URI
   }
 }
-
-// Deploy Aspire Dashboard
-module aspireDashboard 'core/host/container-app-upsert.bicep' = {
-  name: '${deployment().name}-dash'
-  scope: resourceGroup
-  params: {
-    name: aspireDashboardName
-    location: location
-    tags: tags
-    containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerName: 'aspire-dashboard'
-    imageName: aspireDashboardImageName
-    ingressEnabled: true
-    external: true
-    targetPort: aspireDashboardTargetPort
-    additionalPorts: [
-      {
-        exposedPort: aspireDashboardAdditionalGrpcExposedPort
-        targetPort: aspireDashboardAdditionalGrpcTargetPort
-      }
-      {
-        exposedPort: aspireDashboardAdditionalHttpExposedPort
-        targetPort: aspireDashboardAdditionalHttpTargetPort
-      }
-    ]
-    env: [
-      {
-        name: 'ASPNETCORE_ENVIRONMENT'
-        value: 'Production'
-      }
-      {
-        name: 'ASPNETCORE_URLS'
-        value: 'http://+:${aspireDashboardTargetPort}'
-      }
-    ]
-  }
-}
-
-// Add an output for the Aspire Dashboard URL
-output ASPIRE_DASHBOARD_URI string = aspireDashboard.outputs.uri
 
 module storage 'core/storage/storage-account.bicep' = {
   name: 'storage'
@@ -371,15 +272,6 @@ module storageContribRoleApi 'core/security/role.bicep' = {
   }
 }
 
-module dataScientistRole 'core/security/subscription-role.bicep' = {
-  name: 'data-scientist-role'
-  params: {
-    principalId: backendApp.outputs.SERVICE_BACKEND_PRINCIPAL_ID
-    roleDefinitionId: 'f6c7c914-8db3-469d-8ca1-694a8f32e121' // Azure ML Data Scientist
-    principalType: 'ServicePrincipal'
-  }
-}
-
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = monitoring.outputs.applicationInsightsConnectionString
 output APPLICATIONINSIGHTS_NAME string = monitoring.outputs.applicationInsightsName
 output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerApps.outputs.environmentName
@@ -404,5 +296,3 @@ output SERVICE_FRONTEND_IDENTITY_NAME string = frontendApp.outputs.SERVICE_FRONT
 output SERVICE_FRONTEND_NAME string = frontendApp.outputs.SERVICE_FRONTEND_NAME
 output SERVICE_BACKEND_IDENTITY_NAME string = backendApp.outputs.SERVICE_BACKEND_IDENTITY_NAME
 output SERVICE_BACKEND_NAME string = backendApp.outputs.SERVICE_BACKEND_NAME
-output ASPIRE_DASHBOARD_FQDN string = aspireDashboard.outputs.defaultDomain
-
