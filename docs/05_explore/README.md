@@ -308,206 +308,414 @@
 
 ## DevOps / SRE Persona
 
-### Exercise 1: Upgrade the Flight Agent’s LLM and Evaluate with Azure AI Evaluation SDK
+### Exercise 1: Upgrade the Flight Agent's LLM and Evaluate with Azure AI Evaluation SDK
 
 #### Objective
 Upgrade the LLM used by the flight_agent in the voice_agent project (e.g., from gpt-4 to gpt-4o), and evaluate the impact using the Azure AI Evaluation SDK for Python.
 
-#### Files to Update or Create
-- `voice_agent/app/backend/tests/test_flight_agent_evaluation.py` (new)
+#### Prerequisites
+- Basic understanding of Python and VS Code
+- Access to Azure OpenAI resources
+- Understanding of LLM evaluation concepts
 
----
+#### Steps Overview
 
-I've created two test files to help you implement agent evaluation using the Azure AI Foundry evaluation SDK as requested:
+1. Configure environment variables
+2. Install required packages
+3. Create & understand the evaluation script
+4. Run the evaluation
+5. Analyze results
 
-1. **test_flight_agent_evaluation.py**: A basic evaluation script that tests the flight agent against predefined test cases. 
+#### Step 1: Configure Environment Variables
 
-This file contains:
-
-- Setup for the IntentResolutionEvaluator, ToolCallAccuracyEvaluator, and TaskAdherenceEvaluator
-- Tool definitions that match your flight_agent's capabilities
-- A set of example test cases covering different flight-related scenarios
-- Individual evaluation logic for each metric
-
-2. **test_flight_agent_integration.py**: A more advanced integration test that demonstrates:
-
-- How to connect to an Azure AI Foundry project for more detailed evaluation
-- Both individual and batch evaluation workflows
-- An example of how to record and evaluate real agent interactions
-- Support for visualizing results in the Azure AI Foundry portal
-
-
-To run these evaluations, you'll need to configure a few environment variables:
+First, let's set up the necessary environment variables in a `.env` file in the backend directory.
 
 ```
-    AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
-    AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-    AZURE_OPENAI_API_VERSION=2024-10-01-preview
-    AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini (or your preferred model)
+AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
 ```
 
-For the integration with Azure AI Foundry, you'll also need these variables:
+#### Step 2: Install Required Packages
 
-```
-    PROJECT_CONNECTION_STRING=your_project_connection_string
-    AZURE_SUBSCRIPTION_ID=your_subscription_id
-    PROJECT_NAME=your_project_name
-    RESOURCE_GROUP_NAME=your_resource_group_name
-```
-To run the tests, you can use:
+Install the Azure AI Evaluation SDK:
 
-```
-    cd voice_agent/app/backend
-    python -m tests.test_flight_agent_evaluation
-    python -m tests.test_flight_agent_integration
+```bash
+pip install azure-ai-evaluation dotenv
 ```
 
-The evaluators will assess your flight agent's performance in three key areas:
-
-- Intent Resolution: Measures how well the agent understands the user's request, including identifying when to use the right tools.
-
-- Tool Call Accuracy: Evaluates whether the agent is using the appropriate tools and passing the correct parameters based on the user's request.
-
-- Task Adherence: Measures how well the agent's responses align with its assigned tasks as a flight agent.
-
-These evaluations will help you identify areas for improvement in your flight agent and ensure it's effectively handling customer inquiries according to its design.
-
-#### Step 1: Create an Evaluation Script
-
-**File:** `voice_agent/app/backend/tests/test_flight_agent_evaluation.py`
-
-Setup four test cases covering different flight scenarios:
-- Flight booking inquiry
-- Baggage policy question
-- Flight change request
-- Flight status check
-
-```python
-
-
-
-```
-
-
-
-
-
-
-
-
-#### Step 1: Update the LLM Model for Flight Agent
-
-**File:** `voice_agent/app/backend/rtmt.py`
-
-
-
-
-
----
-
-#### Step 2: Update the `.env` File
-
-**File:** `.env`
-
-Add or update these lines:
-
-```
-AZURE_OPENAI_FLIGHT_DEPLOYMENT=gpt-4o
-AZURE_OPENAI_ENDPOINT=https://<your-endpoint>.openai.azure.com/
-AZURE_OPENAI_API_KEY=<your-api-key>
-```
-
----
-
-#### Step 3: Install Azure AI Evaluation SDK
-
-Install the Azure AI Evaluation SDK 
-```
-pip install azure-ai-evaluation
-pip install azure-ai-projects
-```
-
-**File:** `voice_agent/app/backend/requirements.txt`
-
-Or add this line:
+Or add these lines to `voice_agent/app/backend/requirements.txt`:
 
 ```
 azure-ai-evaluation
-azure-ai-projects
+python-dotenv
 ```
 
-Then install:
+Then run:
 
-```pwsh
+```bash
 pip install -r voice_agent/app/backend/requirements.txt
 ```
 
----
+#### Step 3: Create & underestand the Evaluation Script
 
-#### Step 4: Create an Evaluation Script
+Create a new file at `voice_agent/app/backend/tests/test_flight_agent_evaluation.py` with the following content:
 
-**File:** `voice_agent/app/backend/tests/test_flight_agent_evaluation.py`
-
-Create this file with the following content:
+<details>
+<summary>Click to expand/collapse</summary>
 
 ```python
 import os
-from azure.ai.evaluation import EvaluationClient, EvaluationTask, EvaluationScenario
+from azure.ai.evaluation import (
+    GroundednessEvaluator, 
+    CoherenceEvaluator, 
+    RelevanceEvaluator,
+    IntentResolutionEvaluator,
+    ToolCallAccuracyEvaluator,
+    TaskAdherenceEvaluator
+)
+from dotenv import load_dotenv
+load_dotenv()
 
 # Load environment variables
 endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 api_key = os.getenv("AZURE_OPENAI_API_KEY")
+model = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-4o-mini")
 
-# Initialize the evaluation client
-client = EvaluationClient(endpoint=endpoint, api_key=api_key)
+# Model config for evaluators
+model_config = {
+    "azure_deployment": model,  # or your preferred model
+    "azure_endpoint": endpoint,
+    "api_key": api_key
+}
 
-# Define a scenario to test the flight agent
-scenario = EvaluationScenario(
-    name="FlightAgentLLMUpgrade",
-    description="Evaluate upgraded LLM for flight agent",
-    tasks=[
-        EvaluationTask(
-            input_data={"user_query": "Book a flight from New York to London on May 10th"},
-            expected_output="Flight booking details for New York to London on May 10th"
-        ),
-        EvaluationTask(
-            input_data={"user_query": "What is the baggage allowance for economy class?"},
-            expected_output="Baggage allowance details for economy class"
-        ),
-        # Add more tasks as needed
-    ]
-)
+# Flight agent tool definitions for ToolCallAccuracyEvaluator
+flight_agent_tool_definitions = [
+    {
+        "name": "search_airline_knowledgebase",
+        "description": "Searches the airline knowledge base to answer airline policy questions.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_query": {
+                    "type": "string",
+                    "description": "The search query to use to search the knowledge base."
+                }
+            },
+            "required": ["search_query"]
+        }
+    },
+    {
+        "name": "query_flights",
+        "description": "Query the list of available flights for a given departure airport code, arrival airport code and departure time.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "from_": {
+                    "type": "string",
+                    "description": "The departure airport code."
+                },
+                "to": {
+                    "type": "string",
+                    "description": "The arrival airport code."
+                },
+                "departure_time": {
+                    "type": "string",
+                    "description": "The departure time."
+                }
+            },
+            "required": ["from_", "to", "departure_time"]
+        }
+    },
+    {
+        "name": "check_flight_status",
+        "description": "Checks the flight status for a flight.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "flight_num": {
+                    "type": "string",
+                    "description": "The flight number."
+                },
+                "from_": {
+                    "type": "string",
+                    "description": "The departure airport code."
+                }
+            },
+            "required": ["flight_num", "from_"]
+        }
+    },
+    {
+        "name": "confirm_flight_change",
+        "description": "Execute the flight change after confirming with the customer.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "current_ticket_number": {
+                    "type": "string",
+                    "description": "The current ticket number."
+                },
+                "new_flight_number": {
+                    "type": "string",
+                    "description": "The new flight number."
+                },
+                "new_departure_time": {
+                    "type": "string",
+                    "description": "The new departure time."
+                },
+                "new_arrival_time": {
+                    "type": "string",
+                    "description": "The new arrival time."
+                }
+            },
+            "required": ["current_ticket_number", "new_flight_number", "new_departure_time", "new_arrival_time"]
+        }
+    },
+    {
+        "name": "check_change_booking",
+        "description": "Check the feasibility and outcome of a presumed flight change.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "current_ticket_number": {
+                    "type": "string",
+                    "description": "The current ticket number."
+                },
+                "current_flight_number": {
+                    "type": "string",
+                    "description": "The current flight number."
+                },
+                "new_flight_number": {
+                    "type": "string",
+                    "description": "The new flight number."
+                },
+                "from_": {
+                    "type": "string",
+                    "description": "The departure airport code."
+                }
+            },
+            "required": ["current_ticket_number", "current_flight_number", "new_flight_number", "from_"]
+        }
+    },
+    {
+        "name": "load_user_flight_info",
+        "description": "Loads the flight information for a user.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user id."
+                }
+            },
+            "required": ["user_id"]
+        }
+    }
+]
 
-# Run the evaluation
-results = client.evaluate(scenario)
-print(results)
+# Example test cases for the flight agent with tool calls
+test_cases = [
+    {
+        "input": "I want to book a flight from New York to London on May 10th",
+        "output": "I'd be happy to help you book a flight from New York to London on May 10th. Let me search for available flights for you.",
+        "tool_calls": [
+            {
+                "type": "tool_call",
+                "tool_call_id": "call_123",
+                "name": "query_flights",
+                "arguments": {
+                    "from_": "NYC",
+                    "to": "LHR",
+                    "departure_time": "2025-05-10T12:00:00"
+                }
+            }
+        ],
+        "expected_intent": "flight booking",
+        "context": "There are several flights available from New York to London on May 10th, 2025. The options include morning, afternoon, and evening departures with various airlines."
+    },
+    {
+        "input": "What is the baggage allowance for economy class?",
+        "output": "Let me check the baggage policy for economy class flights for you.",
+        "tool_calls": [
+            {
+                "type": "tool_call",
+                "tool_call_id": "call_456",
+                "name": "search_airline_knowledgebase",
+                "arguments": {
+                    "search_query": "baggage allowance economy class"
+                }
+            }
+        ],
+        "context": "The baggage allowance for economy class is one checked bag up to 23kg and one carry-on.",
+        "expected_intent": "policy inquiry"
+    },
+    {
+        "input": "I need to change my flight AA123 from JFK. My ticket number is 1234567890.",
+        "output": "I understand you want to change your flight AA123 departing from JFK. Let me check what options are available for you.",
+        "tool_calls": [
+            {
+                "type": "tool_call",
+                "tool_call_id": "call_789",
+                "name": "check_change_booking",
+                "arguments": {
+                    "current_ticket_number": "1234567890",
+                    "current_flight_number": "AA123",
+                    "new_flight_number": "AA456",
+                    "from_": "JFK"
+                }
+            }
+        ],
+        "expected_intent": "flight change",
+        "context": "Flight AA123 from JFK is scheduled for April 30, 2025. There are alternative flights available on May 1st and May 2nd with similar schedules."
+    },
+    {
+        "input": "Can you check the status of flight AA490 from Los Angeles?",
+        "output": "I'd be happy to check the status of flight AA490 from Los Angeles for you.",
+        "tool_calls": [
+            {
+                "type": "tool_call",
+                "tool_call_id": "call_012",
+                "name": "check_flight_status",
+                "arguments": {
+                    "flight_num": "AA490",
+                    "from_": "LAX"
+                }
+            }
+        ],
+        "expected_intent": "flight status",
+        "context": "Flight AA490 from Los Angeles is currently on time and scheduled to depart at 2:30 PM local time."
+    }
+]
+
+# Initialize all evaluators
+metrics = {
+    "Groundedness": GroundednessEvaluator(model_config=model_config),
+    "Coherence": CoherenceEvaluator(model_config=model_config),
+    "Relevance": RelevanceEvaluator(model_config=model_config),
+    "IntentResolution": IntentResolutionEvaluator(model_config=model_config),
+    "ToolCallAccuracy": ToolCallAccuracyEvaluator(model_config=model_config),
+    "TaskAdherence": TaskAdherenceEvaluator(model_config=model_config)
+}
+
+print("=== Flight Agent Evaluation Results ===")
+
+# Run evaluation for each test case
+for idx, case in enumerate(test_cases, 1):
+    print(f"\n*****Test Case {idx}: {case['input']}")
+    for metric_name, evaluator in metrics.items():
+        score = None
+        try:
+            if metric_name == "Groundedness":
+                if "context" in case:
+                    score = evaluator(
+                        context=case["context"],
+                        response=case["output"]
+                    )
+                else:
+                    print(f"\n   {metric_name}: Skipped (missing context in test case)")
+                    continue
+            elif metric_name == "Coherence":
+                # Based on documentation, Coherence evaluator expects query and response parameters
+                score = evaluator(
+                    query=case["input"],
+                    response=case["output"]
+                )
+            elif metric_name == "Relevance":
+                # Based on documentation, Relevance evaluator expects query and response parameters
+                score = evaluator(
+                    query=case["input"],
+                    response=case["output"]
+                )
+            elif metric_name == "IntentResolution":
+                # For Intent Resolution, we need the expected intent
+                score = evaluator(
+                    query=case["input"],
+                    response=case["output"],
+                    tool_definitions=flight_agent_tool_definitions
+                )
+                print(f"\n   {metric_name}: {score} (Expected: {case.get('expected_intent', 'unknown')})")
+                continue
+            elif metric_name == "ToolCallAccuracy":
+                # For Tool Call Accuracy, we need the tool calls and tool definitions
+                if "tool_calls" in case:
+                    score = evaluator(
+                        query=case["input"],
+                        tool_calls=case["tool_calls"],
+                        tool_definitions=flight_agent_tool_definitions
+                    )
+                else:
+                    print(f"\n   {metric_name}: Skipped (missing tool_calls in test case)")
+                    continue
+            elif metric_name == "TaskAdherence":
+                # For Task Adherence, evaluate how well the response adheres to the flight agent's task
+                score = evaluator(
+                    query=case["input"],
+                    response=case["output"],
+                    tool_calls=case.get("tool_calls")
+                )
+
+            print(f"\n   {metric_name}: {score}")
+        except Exception as e:
+            print(f"\n   Error evaluating {metric_name}: {e}")
+
+
+# Print overall results summary
+print("\n=== Overall Evaluation Summary ===")
+print("This summary would show aggregated metrics across all test cases.")
+print("For a production environment, you would typically run these evaluations")
+print("against a larger dataset and track metrics over time.")
+```
+</details>
+
+
+Let's break down the key components of this evaluation script:
+
+1. **Tool Definitions**: This section defines all available tools for the flight agent in a format that the evaluation SDK can understand.
+
+2. **Test Cases**: These are pre-defined scenarios that represent common customer interactions with the flight agent.
+
+3. **Evaluators**:
+   - **Groundedness**: Measures if responses are factually accurate based on given context
+   - **Coherence**: Measures if responses make logical sense
+   - **Relevance**: Measures if responses are relevant to the user query
+   - **IntentResolution**: Measures if the agent correctly identifies user intent
+   - **ToolCallAccuracy**: Measures if the agent uses the right tools with the right parameters
+   - **TaskAdherence**: Measures if the agent stays on task
+
+#### Step 4: Run the Evaluation
+
+Execute the script to evaluate your flight agent:
+
+```bash
+cd voice_agent/app/backend
+python -m tests.test_flight_agent_evaluation
 ```
 
----
+The output will display scores for each evaluator across all test cases.
 
-#### Step 5: Test the Flight Agent
+#### Step 5: Analyze the Results
 
-Restart your backend if needed, then run the evaluation script:
+After running the evaluation, you'll see scores for each metric. These scores help you:
 
-```pwsh
-python voice_agent/app/backend/tests/test_flight_agent_evaluation.py
-```
+1. Identify areas where the agent performs well
+2. Pinpoint specific scenarios where the agent struggles
+3. Compare performance before and after model upgrades
 
-Check the output to see the results of the upgraded LLM.
+Focus on metrics that score below your expectations and look for patterns in the test cases where the agent performed poorly.
 
----
+#### Step 6: Iterate and Improve
 
-#### Step 6: (Optional) Compare with Previous Model
+Based on your findings:
 
-To compare, set `AZURE_OPENAI_FLIGHT_DEPLOYMENT` in `.env` to the old model (e.g., `gpt-4`), rerun the evaluation, and compare outputs.
+1. Modify the agent's prompts or tool definitions
+2. Add more test cases for scenarios that revealed issues
+3. Re-run the evaluation to check if changes improved performance
 
----
+#### What You've Learned
 
-**Summary of files to update/create:**
-- `voice_agent/app/backend/rtmt.py` (update LLM config)
-- `.env` (set deployment/model info)
-- `voice_agent/app/backend/requirements.txt` (add evaluation SDK)
-- `voice_agent/app/backend/tests/test_flight_agent_evaluation.py` (new evaluation script)
+- How to set up and run evaluations using the Azure AI Evaluation SDK
+- How different metrics help assess various aspects of agent performance
+- How to interpret evaluation results to guide improvements
+
+This approach provides quantitative metrics to measure the impact of upgrading your agent's LLM and helps ensure that changes maintain or improve the user experience.
 
 ## Security/Safety Persona 
 - Exercise 1: leverage of Evaluation SDK simulators to try to break the system and see if any extra safety needs to be put in place. https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/develop/simulator-interaction-data
