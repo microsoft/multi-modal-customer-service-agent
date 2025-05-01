@@ -36,37 +36,109 @@ from semantic_kernel.contents import (
     TextContent,
 )
 
-# Environment variables for easy configuration & deployment
-# "console", "application_insights", "aspire_dashboard"
-TELEMETRY_SCENARIO = os.getenv("TELEMETRY_SCENARIO", "console")
-APP_INSIGHTS_CONNECTION_STRING = os.getenv(
-    "APPLICATIONINSIGHTS_CONNECTION_STRING")
+# Environment variables for easy configuration & deployment of telemetry
+# Defaults to "console" if not set
+# Options: "console", "application_insights", "aspire_dashboard"
+# Can be set as a comma-separated list to enable multiple scenarios
+TELEMETRY_SCENARIOS = os.getenv("TELEMETRY_SCENARIO", "console").split(",")
+APP_INSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
 ASPIRE_DASHBOARD_ENDPOINT = os.getenv("ASPIRE_DASHBOARD_ENDPOINT")
 # Optional, overrides scenario default
 CUSTOM_SERVICE_NAME = os.getenv("SERVICE_NAME")
 
-# Assemble scenario-specific parameters
-scenario_args = {"scenario": TELEMETRY_SCENARIO}
-if CUSTOM_SERVICE_NAME:
-    scenario_args["service_name"] = CUSTOM_SERVICE_NAME
-if TELEMETRY_SCENARIO == "application_insights":
-    scenario_args["connection_string"] = APP_INSIGHTS_CONNECTION_STRING
-elif TELEMETRY_SCENARIO == "aspire_dashboard":
-    scenario_args["endpoint"] = ASPIRE_DASHBOARD_ENDPOINT
 
-# Initialize telemetry (should happen before your app's main logic starts)
-set_up_logging(**scenario_args)
-set_up_tracing(**scenario_args)
-set_up_metrics(**scenario_args)
+# --- Multi-endpoint OpenTelemetry setup ---
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, ConsoleLogExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.trace import set_tracer_provider
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader, ConsoleMetricExporter
+from opentelemetry.sdk.metrics.view import View
+from opentelemetry.metrics import set_meter_provider
+try:
+    from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+    from opentelemetry.exporter.otlp.proto.grpc._trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc._metric_exporter import OTLPMetricExporter
+except ImportError:
+    OTLPLogExporter = OTLPSpanExporter = OTLPMetricExporter = None
+try:
+    from azure.monitor.opentelemetry.exporter import (
+        AzureMonitorLogExporter, AzureMonitorTraceExporter, AzureMonitorMetricExporter
+    )
+except ImportError:
+    AzureMonitorLogExporter = AzureMonitorTraceExporter = AzureMonitorMetricExporter = None
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.resource import ResourceAttributes
+
+log_exporters = []
+span_exporters = []
+metric_readers = []
+views = [View(instrument_name="semantic_kernel*")]
+
+def get_resource(service_name):
+    return Resource.create({ResourceAttributes.SERVICE_NAME: service_name or "telemetry-app"})
+
+for scenario in TELEMETRY_SCENARIOS:
+    scenario = scenario.strip()
+    service_name = CUSTOM_SERVICE_NAME
+    if scenario == "console":
+        log_exporters.append(ConsoleLogExporter())
+        span_exporters.append(ConsoleSpanExporter())
+        metric_readers.append(PeriodicExportingMetricReader(ConsoleMetricExporter(), export_interval_millis=5000))
+    elif scenario == "application_insights":
+        if AzureMonitorLogExporter and AzureMonitorTraceExporter and AzureMonitorMetricExporter:
+            if not APP_INSIGHTS_CONNECTION_STRING:
+                raise ValueError("APPLICATIONINSIGHTS_CONNECTION_STRING is required for Application Insights telemetry")
+            log_exporters.append(AzureMonitorLogExporter(connection_string=APP_INSIGHTS_CONNECTION_STRING))
+            span_exporters.append(AzureMonitorTraceExporter(connection_string=APP_INSIGHTS_CONNECTION_STRING))
+            metric_readers.append(PeriodicExportingMetricReader(AzureMonitorMetricExporter(connection_string=APP_INSIGHTS_CONNECTION_STRING), export_interval_millis=5000))
+        else:
+            raise ImportError("azure-monitor-opentelemetry-exporter is not installed. Please install it.")
+    elif scenario == "aspire_dashboard":
+        print('OTLPLogExporter:', OTLPLogExporter)
+        print('OTLPSpanExporter:', OTLPSpanExporter)
+        print('OTLPMetricExporter:', OTLPMetricExporter)
+        if OTLPLogExporter and OTLPSpanExporter and OTLPMetricExporter:
+            if not ASPIRE_DASHBOARD_ENDPOINT:
+                raise ValueError("ASPIRE_DASHBOARD_ENDPOINT is required for Aspire Dashboard telemetry")
+            log_exporters.append(OTLPLogExporter(endpoint=ASPIRE_DASHBOARD_ENDPOINT))
+            span_exporters.append(OTLPSpanExporter(endpoint=ASPIRE_DASHBOARD_ENDPOINT))
+            metric_readers.append(PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=ASPIRE_DASHBOARD_ENDPOINT), export_interval_millis=5000))
+        else:
+            raise ImportError("opentelemetry-exporter-otlp-proto-grpc is not installed. Please install it.")
+    else:
+        raise ValueError(f"Invalid telemetry scenario: {scenario}")
+
+# Set up logging provider
+logger_provider = LoggerProvider(resource=get_resource(CUSTOM_SERVICE_NAME))
+for exporter in log_exporters:
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
+set_logger_provider(logger_provider)
+# Attach OpenTelemetry to built-in logging (only for semantic_kernel logs, for SK compat)
+handler = LoggingHandler()
+handler.addFilter(logging.Filter("semantic_kernel"))
+logging.getLogger().addHandler(handler)
+logging.getLogger().setLevel(logging.INFO)
+
+# Set up tracing provider
+tracer_provider = TracerProvider(resource=get_resource(CUSTOM_SERVICE_NAME))
+for exporter in span_exporters:
+    tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
+set_tracer_provider(tracer_provider)
+
+# Set up metrics provider
+meter_provider = MeterProvider(resource=get_resource(CUSTOM_SERVICE_NAME), views=views, metric_readers=metric_readers)
+set_meter_provider(meter_provider)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-
 # --------------------------- RTMiddleTier Class ---------------------------
-
 class RTMiddleTier:
     model: Optional[str] = None
     agents: list[dict] = []

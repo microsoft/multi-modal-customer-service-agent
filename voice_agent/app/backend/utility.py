@@ -97,36 +97,35 @@ def set_up_logging(scenario="console", connection_string=None, endpoint=None, se
     :param endpoint: Required for Aspire Dashboard/OTLP  
     :param service_name: Optional override for service name resource attribute  
     """
-    resource = get_resource(scenario, service_name)
+    # Use a singleton logger provider and add processors for each exporter
+    if not hasattr(set_up_logging, "_logger_provider"):
+        # Only create the provider once, with a default resource
+        set_up_logging._logger_provider = LoggerProvider(resource=get_resource("console"))
+        set_logger_provider(set_up_logging._logger_provider)
+        # Attach OpenTelemetry to built-in logging (only for semantic_kernel logs, for SK compat)
+        handler = LoggingHandler()
+        handler.addFilter(logging.Filter("semantic_kernel"))
+        logger = logging.getLogger()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
 
+    # Add a log processor for each exporter/scenario
     if scenario == "console":
         exporter = ConsoleLogExporter()
     elif scenario == "application_insights":
         if AzureMonitorLogExporter is None:
-            raise ImportError(
-                "azure-monitor-opentelemetry-exporter is not installed. Please install it.")
+            raise ImportError("azure-monitor-opentelemetry-exporter is not installed. Please install it.")
         if not connection_string:
-            raise ValueError(
-                "connection_string is required for Application Insights logging")
+            raise ValueError("connection_string is required for Application Insights logging")
         exporter = AzureMonitorLogExporter(connection_string=connection_string)
     elif scenario == "aspire_dashboard":
         if not endpoint:
-            raise ValueError(
-                "endpoint is required for Aspire Dashboard logging")
+            raise ValueError("endpoint is required for Aspire Dashboard logging")
         exporter = OTLPLogExporter(endpoint=endpoint)
     else:
         raise ValueError(f"Invalid scenario: {scenario}")
 
-    logger_provider = LoggerProvider(resource=resource)
-    logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
-    set_logger_provider(logger_provider)
-
-    # Attach OpenTelemetry to built-in logging (only for semantic_kernel logs, for SK compat)
-    handler = LoggingHandler()
-    handler.addFilter(logging.Filter("semantic_kernel"))
-    logger = logging.getLogger()
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    set_up_logging._logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 
 
 def set_up_tracing(scenario="console", connection_string=None, endpoint=None, service_name=None):
@@ -137,30 +136,27 @@ def set_up_tracing(scenario="console", connection_string=None, endpoint=None, se
     :param endpoint: Required for Aspire Dashboard/OTLP  
     :param service_name: Optional override for service name resource attribute  
     """
-    resource = get_resource(scenario, service_name)
+    # Use a singleton tracer provider and add processors for each exporter
+    if not hasattr(set_up_tracing, "_tracer_provider"):
+        set_up_tracing._tracer_provider = TracerProvider(resource=get_resource("console"))
+        set_tracer_provider(set_up_tracing._tracer_provider)
 
     if scenario == "console":
         exporter = ConsoleSpanExporter()
     elif scenario == "application_insights":
         if AzureMonitorTraceExporter is None:
-            raise ImportError(
-                "azure-monitor-opentelemetry-exporter is not installed. Please install it.")
+            raise ImportError("azure-monitor-opentelemetry-exporter is not installed. Please install it.")
         if not connection_string:
-            raise ValueError(
-                "connection_string is required for Application Insights tracing")
-        exporter = AzureMonitorTraceExporter(
-            connection_string=connection_string)
+            raise ValueError("connection_string is required for Application Insights tracing")
+        exporter = AzureMonitorTraceExporter(connection_string=connection_string)
     elif scenario == "aspire_dashboard":
         if not endpoint:
-            raise ValueError(
-                "endpoint is required for Aspire Dashboard tracing")
+            raise ValueError("endpoint is required for Aspire Dashboard tracing")
         exporter = OTLPSpanExporter(endpoint=endpoint)
     else:
         raise ValueError(f"Invalid scenario: {scenario}")
 
-    tracer_provider = TracerProvider(resource=resource)
-    tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
-    set_tracer_provider(tracer_provider)
+    set_up_tracing._tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
 
 
 def set_up_metrics(scenario="console", connection_string=None, endpoint=None, service_name=None):
@@ -171,41 +167,33 @@ def set_up_metrics(scenario="console", connection_string=None, endpoint=None, se
     :param endpoint: Required for Aspire Dashboard/OTLP  
     :param service_name: Optional override for service name resource attribute  
     """
-    resource = get_resource(scenario, service_name)
+    # Use a singleton meter provider and add metric readers for each exporter
+    if not hasattr(set_up_metrics, "_meter_provider"):
+        views = [View(instrument_name="semantic_kernel*")]
+        if DROP_AGGREGATION_AVAILABLE:
+            views.insert(0, View(instrument_name="*", aggregation=DropAggregation()))
+        set_up_metrics._meter_provider = MeterProvider(resource=get_resource("console"), views=views)
+        set_meter_provider(set_up_metrics._meter_provider)
 
     if scenario == "console":
         exporter = ConsoleMetricExporter()
     elif scenario == "application_insights":
         if AzureMonitorMetricExporter is None:
-            raise ImportError(
-                "azure-monitor-opentelemetry-exporter is not installed. Please install it.")
+            raise ImportError("azure-monitor-opentelemetry-exporter is not installed. Please install it.")
         if not connection_string:
-            raise ValueError(
-                "connection_string is required for Application Insights metrics")
-        exporter = AzureMonitorMetricExporter(
-            connection_string=connection_string)
+            raise ValueError("connection_string is required for Application Insights metrics")
+        exporter = AzureMonitorMetricExporter(connection_string=connection_string)
     elif scenario == "aspire_dashboard":
         if not endpoint:
-            raise ValueError(
-                "endpoint is required for Aspire Dashboard metrics")
+            raise ValueError("endpoint is required for Aspire Dashboard metrics")
         exporter = OTLPMetricExporter(endpoint=endpoint)
     else:
         raise ValueError(f"Invalid scenario: {scenario}")
 
-    views = [
-        View(instrument_name="semantic_kernel*"),
-    ]
-    if DROP_AGGREGATION_AVAILABLE:
-        views.insert(0, View(instrument_name="*", aggregation=DropAggregation()))
-    meter_provider = MeterProvider(
-        metric_readers=[
-            PeriodicExportingMetricReader(
-                exporter, export_interval_millis=5000),
-        ],
-        resource=resource,
-        views=views,
+    # Add a metric reader for each exporter using the public API
+    set_up_metrics._meter_provider.add_metric_reader(
+        PeriodicExportingMetricReader(exporter, export_interval_millis=5000)
     )
-    set_meter_provider(meter_provider)
 
 
 # Configure basic logging (separate from those in OpenTelemetry for the logger named semantic_kernel above)
