@@ -289,6 +289,10 @@ module aspireDashboard 'core/host/container-app-upsert.bicep' = {
         name: 'ASPNETCORE_URLS'
         value: 'http://+:${aspireDashboardTargetPort}'
       }
+      {
+        name: 'DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS'
+        value: 'true'
+      }
     ]
   }
 }

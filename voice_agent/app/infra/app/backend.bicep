@@ -109,6 +109,10 @@ module backend '../core/host/container-app-upsert.bicep' = {
         name: 'ASPIRE_DASHBOARD_ENDPOINT'
         value: otlpEndpoint
       }
+      {
+        name: 'TELEMETRY_SCENARIO'
+        value: 'console,application_insights,aspire_dashboard'
+      }
     ]
     targetPort: containerPort
   }
