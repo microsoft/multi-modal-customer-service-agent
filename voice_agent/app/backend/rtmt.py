@@ -60,8 +60,8 @@ from opentelemetry.sdk.metrics.view import View
 from opentelemetry.metrics import set_meter_provider
 try:
     from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
-    from opentelemetry.exporter.otlp.proto.grpc._trace_exporter import OTLPSpanExporter
-    from opentelemetry.exporter.otlp.proto.grpc._metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 except ImportError:
     OTLPLogExporter = OTLPSpanExporter = OTLPMetricExporter = None
 try:
