@@ -311,7 +311,7 @@
 ### Exercise 1: Upgrade the Flight Agent's LLM and Evaluate with Azure AI Evaluation SDK
 
 #### Objective
-Upgrade the LLM used by the flight_agent in the voice_agent project (e.g., from gpt-4 to gpt-4o), and evaluate the impact using the Azure AI Evaluation SDK for Python.
+For the flight_agent in the voice_agent project, evaluate the current LLM.  Then upgrade the LLM (e.g., from gpt-4 to gpt-4o) and evaluate the impact using the Azure AI Evaluation SDK for Python.
 
 #### Prerequisites
 - Basic understanding of Python and VS Code
@@ -320,15 +320,18 @@ Upgrade the LLM used by the flight_agent in the voice_agent project (e.g., from 
 
 #### Steps Overview
 
-1. Configure environment variables
+1. Review current LLM 
 2. Install required packages
 3. Create & understand the evaluation script
 4. Run the evaluation
 5. Analyze results
+6. Upgrade the LLM
+7. Rerun the evaluation
+8. Analyze and compare results between the runs
 
-#### Step 1: Configure Environment Variables
+#### Step 1: Review current LLM
 
-First, let's set up the necessary environment variables in a `.env` file in the backend directory.
+Review the current LLM environment variable.  It is in a `.env` file in the backend directory.
 
 ```
 AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
@@ -701,7 +704,19 @@ After running the evaluation, you'll see scores for each metric. These scores he
 
 Focus on metrics that score below your expectations and look for patterns in the test cases where the agent performed poorly.
 
-#### Step 6: Iterate and Improve
+#### Step 6: Upgrade the LLM 
+
+Upgrade the LLM by picking another LLM to evaluate.  Update the file in Step 1 with name of new LLM.
+
+#### Step 7: Rerun the evaluation
+
+Follow Step 4: Run the Evaluation
+
+#### Step 8: Analyze and compare results between the runs
+
+Review Step 5: Analyze the Results
+
+#### Step 9: Iterate and Improve
 
 Based on your findings:
 
