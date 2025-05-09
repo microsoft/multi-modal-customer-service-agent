@@ -43,12 +43,17 @@ Conduct a conversation with the customer service agents following this sequence:
 - Go to your resource group in Azure Portal
 - Click on the `aspire-dashboard` resource
 - Click on the `Application URL` in the top right corner to navigate to the dashboard
+![Logs](../../media/aspire_dashboard_logs.png)
 - Observe the application log showing the conversation you conducted. Locate an entry: "Function hotel_tools-load_user_reservation_info invoking." and click on the Trace link. This navigates you to the Trace page for that function call.
 - Observe the details of the trace, such as the duration and other metadata.
+![Trace Details](../../media/aspire_dashboard_trace_details.png)
 - Click on the Traces navigation on the left.
 - Observe the sequence of function calls and confirm it matches the conversation you had. Drill into traces to see information as desired.
+![Traces](../../media/aspire_dashboard_traces.png)
 - Click on the Metrics navigation on the left.
 - Click on the function duration metric to see the duration on the most recent function calls.
+![Metrics](../../media/aspire_dashboard_metrics.png)
+
 
 ## Application Environment Variables
 
