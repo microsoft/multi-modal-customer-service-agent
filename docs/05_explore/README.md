@@ -5,7 +5,7 @@
 1.  First, create a new car rental tools plugin.  Create file car_rental_plugins.py in voice_agent\app\backend\agents\tools and add the following code:
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
         from typing import List
@@ -44,7 +44,7 @@
 2. Create a car rental agent profile.  Create car_rental_agent_profile.yaml in voice_agent\app\backend\agents\agent_profiles and add the following:
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
       name: car_rental_agent
@@ -67,7 +67,7 @@
 3. Modify the RTMiddleTier class to include the new car rental agent.  Add the following to the _load_agents method of voice_agent\app\backend\rtmt.py:
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
         from agents.tools.car_rental_plugins import Car_Rental_Tools
@@ -113,7 +113,7 @@
 4.  Next steps are to update the system message to include the car rental agent along with the intent detection functionality.  Update the utility.py detect_intent method to now include car rental agent as part of the system message.  Add the below code to the messages block.
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
     - **car_rental_agent**: Deal with car rentals, vehicle reservations, changes, and general car rental policy questions.
@@ -128,7 +128,7 @@
     Create a JSON file for car rental policies.  Name the file car_rental_policy.json and store it in the data folder along with the flight & hotel policies:
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
     [
@@ -156,7 +156,7 @@
     Update the plugin to setup Azure OpenAI client for embeddings, create get_embedding method to generate text embeddings.  Define the SearchClient class with semantic search functionality and finally initialize the search client.
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
     # Azure OpenAI client setup  
@@ -199,7 +199,7 @@
     Update the Car_Rental_Tools class to include policy search:
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
         from openai import AzureOpenAI
@@ -225,7 +225,7 @@
     Create an embedding generation script & store it in  ./scripts/generate_car_rental_policy_embeddings.py :
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```python
     import json
@@ -272,7 +272,7 @@
     Run the embedding generation script in the terminal 
 
     <details>
-    <summary> Click to expand/collaspse</summary>
+    <summary> Click to expand/collapse</summary>
 
     ```
     cd c:\Code\multi-modal-customer-service-agent\voice_agent\app\backend
@@ -739,4 +739,4 @@ This approach provides quantitative metrics to measure the impact of upgrading y
 - (phase-2 / consider once this functionality is integrated into the AI Foundry Agent Service post Build 2025): Exercise 4: real-time monitoring around generative quality & safety (RAI)
 
 ---
-#### Navigation: [Home](../../README.md) | [Previous Section](../04_deploy/README.md)
+#### Navigation: [Home](../../README.md) | [Previous Section](../04_deploy/README.md) | [Next Section](../06_observability/README.md)

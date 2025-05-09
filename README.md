@@ -44,3 +44,7 @@ The purpose of this section is to help you learn how to best leverage this solut
 You will experience the benefits of a production-grade AI application when it comes to speed of innovation, maintainability and scalability.
 
 This is a great way to get familiar with the solution and understand how to best leverage it for your own use cases.
+
+### [Explore application observability](docs/06_observability/README.md)
+
+Visit this section to observe application behavior and performance through various tools. See logs, traces, and metrics to understand what your application was doing during the realtime conversation.
