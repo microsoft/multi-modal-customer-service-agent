@@ -71,6 +71,9 @@ param serviceBinds array = []
 @description('The target port for the container')
 param targetPort int = 80
 
+@description('Additional ports to expose (optional)')
+param additionalPorts array = []
+
 resource existingApp 'Microsoft.App/containerApps@2023-05-02-preview' existing = if (exists) {
   name: name
 }
@@ -101,6 +104,7 @@ module app 'container-app.bicep' = {
     imageName: !empty(imageName) ? imageName : exists ? existingApp.properties.template.containers[0].image : ''
     targetPort: targetPort
     serviceBinds: serviceBinds
+    additionalPorts: additionalPorts
   }
 }
 
