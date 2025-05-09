@@ -47,7 +47,7 @@ echo "Starting frontend dev server..."
 node server.cjs &
 FRONTEND_PID=$!
 
-echo "Frontend started at: http://localhost:3000"
+echo "Frontend proxy started at: http://localhost:3000"
 
 cd ..  
   
