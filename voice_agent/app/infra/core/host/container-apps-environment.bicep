@@ -12,10 +12,7 @@ param daprEnabled bool = false
 @description('Name of the Log Analytics workspace')
 param logAnalyticsWorkspaceName string
 
-@description('infrastructure subnet id')
-param infrastructureSubnetId string
-
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
+resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-11-02-preview' = {
   name: name
   location: location
   tags: tags
@@ -28,12 +25,15 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
       }
     }
     daprAIInstrumentationKey: daprEnabled && !empty(applicationInsightsName) ? applicationInsights.properties.InstrumentationKey : ''
-    vnetConfiguration: !empty(infrastructureSubnetId) ? {
-      infrastructureSubnetId: infrastructureSubnetId
-      internal: false
-    } : null
+  } 
+}
+
+resource dotNetComponent 'Microsoft.App/managedEnvironments/dotNetComponents@2023-11-02-preview' = {
+  name: '${containerAppsEnvironment.name}-dashboard'
+  parent: containerAppsEnvironment
+  properties: {
+    componentType: 'AspireDashboard'
   }
-  
 }
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
