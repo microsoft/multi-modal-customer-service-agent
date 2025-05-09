@@ -31,7 +31,10 @@ echo "Installing frontend npm packages..."
   
 cd frontend || { echo "frontend folder not found."; exit 1; }  
 npm install || { echo "Frontend npm installation failed."; exit 1; }  
-  
+
+echo ""
+echo "Building frontend application..."
+npm run build || { echo "Frontend build failed."; exit 1; }
 # Note:  
 # • The .env file for the frontend should be placed in the frontend directory (i.e., ./frontend/.env)  
 # • This file can contain environment variables such as BACKEND_WS_URL that Vite will load.  
@@ -41,9 +44,11 @@ VITE_BACKEND_WS_URL="ws://localhost:8765"
   
 echo ""  
 echo "Starting frontend dev server..."  
-npm run dev &  
-FRONTEND_PID=$!  
-  
+node server.cjs &
+FRONTEND_PID=$!
+
+echo "Frontend proxy started at: http://localhost:3000"
+
 cd ..  
   
 # --------------------------- Clean-up on Exit ---------------------------  
