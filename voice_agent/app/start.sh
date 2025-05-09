@@ -40,7 +40,7 @@ npm run build || { echo "Frontend build failed."; exit 1; }
 # • This file can contain environment variables such as BACKEND_WS_URL that Vite will load.  
 #  
 # Example .env file:  
-VITE_BACKEND_WS_URL="ws://localhost:8765"  
+export VITE_BACKEND_WS_URL="ws://localhost:8765"  
   
 echo ""  
 echo "Starting frontend dev server..."  
