@@ -64,4 +64,4 @@ Conduct a conversation with the customer service agents following this sequence:
     - Adjust the value as desired
     - Click `Deploy as new revision`. This will deploy a new revision of the backend app with your new value.
 ---
-#### Navigation: [Home](../../README.md) | [Previous Section](../05_explore/README.md)
+#### Navigation: [Home](../../README.md) | [Previous Section](../02_setup/README.md) | [Next Section](../04_explore/README.md)

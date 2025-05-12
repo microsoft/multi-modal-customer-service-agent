@@ -739,4 +739,4 @@ This approach provides quantitative metrics to measure the impact of upgrading y
 - (phase-2 / consider once this functionality is integrated into the AI Foundry Agent Service post Build 2025): Exercise 4: real-time monitoring around generative quality & safety (RAI)
 
 ---
-#### Navigation: [Home](../../README.md) | [Previous Section](../04_deploy/README.md) | [Next Section](../06_observability/README.md)
+#### Navigation: [Home](../../README.md) | [Previous Section](../03_observability/README.md) 
