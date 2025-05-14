@@ -39,7 +39,7 @@ If running locally or in a dev container, there are configuration steps to wire 
 1. Run this command to host the Aspire Dashboard in a local container:
 
    ```bash
-   `docker run --rm -it -d -p 18888:18888 -p 4317:18889 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0`
+   docker run --rm -it -d -p 18888:18888 -p 4317:18889 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0
    ```
 
 No additional steps are needed if you are running the app that was deployed by `azd up`.
