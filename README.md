@@ -27,17 +27,11 @@ Visit this section to get an overview of the overall architecture and patterns, 
 
 Proceed to this section if you'd like to setup your local development environment. You will install the required tools and libraries, clone the prebuilt app repository, and set up your development environment.
 
-You will also set up the Azure Landing Zone to host the application once deployed.
+### [Explore application observability](docs/03_observability/README.md)
 
-### [Build and Run the App Locally](docs/03_build/README.md)
+Visit this section to observe application behavior and performance through various tools. See logs, traces, and metrics to understand what your application was doing during the realtime conversation.
 
-In this section, you will get the instructions to build and run the backend (Python) and frontend (React.js) of the app locally. You will understand how to test the app locally to ensure everything is working as expected.
-
-### [Deploy to Azure](docs/04_deploy/README.md)
-
-Visit this section to get the detailed instructions to deploy the application front end and backend services to Azure and proceed with some basic tests to ensure everything is working as expected.
-
-### [Explore this Solution Accelerator with Guided Exercises](docs/05_explore/README.md)
+### [Explore this Solution Accelerator with Guided Exercises](docs/04_explore/README.md)
 
 The purpose of this section is to help you learn how to best leverage this solution by walking you through some key scenarios related to different personas involved in the lifecycle of a complex Agentic AI solution. For instance, learn how to add new features to the app, scale it, secure it, monitor and troubleshoot it.
 

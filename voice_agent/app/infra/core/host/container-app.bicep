@@ -75,6 +75,9 @@ param serviceType string = ''
 @description('The target port for the container')
 param targetPort int = 80
 
+@description('Additional ports to expose (optional)')
+param additionalPorts array = []
+
 resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (!empty(identityName)) {
   name: identityName
 }
@@ -117,6 +120,8 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
         corsPolicy: {
           allowedOrigins: union([ 'https://portal.azure.com', 'https://ms.portal.azure.com' ], allowedOrigins)
         }
+        // Add additional exposed ports if specified
+        additionalPortMappings: !empty(additionalPorts) ? additionalPorts : null
       } : null
       dapr: daprEnabled ? {
         enabled: true
