@@ -30,6 +30,20 @@ The bicep infrastructure deploys an Application Insights resource where you can 
 
 ## Observe Application Behavior
 
+### Local Configuration
+
+You can see telemetry data if you are running the app locally, in a local dev container, or in Azure via `azd up`. It will not work if you're running in Github Codespaces. 
+
+If running locally or in a dev container, there are configuration steps to wire up the Aspire Dashboard:
+1. Update the `.env` file with this value: `TELEMETRY_SCENARIO=console,aspire_dashboard`
+1. Run this command to host the Aspire Dashboard in a local container:
+
+   ```bash
+   `docker run --rm -it -d -p 18888:18888 -p 4317:18889 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0`
+   ```
+
+No additional steps are needed if you are running the app that was deployed by `azd up`.
+
 ### Conduct a conversation with the customer service agents
 
 Conduct a conversation with the customer service agents following this sequence:
