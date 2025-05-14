@@ -42,6 +42,8 @@ If running locally or in a dev container, there are configuration steps to wire 
    docker run --rm -it -d -p 18888:18888 -p 4317:18889 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0
    ```
 
+If running locally (not in a dev container), update the `.env` file with this value: `ASPIRE_DASHBOARD_ENDPOINT=http://localhost:4317`
+
 No additional steps are needed if you are running the app that was deployed by `azd up`.
 
 ### Conduct a conversation with the customer service agents
