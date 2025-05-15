@@ -278,8 +278,12 @@
     cd c:\Code\multi-modal-customer-service-agent\voice_agent\app\backend
     python scripts/generate_car_rental_policy_embeddings.py
     ```
-
     </details>
+
+    f) After implementation, test with queries about:
+      - Insurance coverage options and costs
+      - Rental requirements and age restrictions
+      - Deductibles and additional coverage options
 
     ### Expand to see the complete car_rental_plugins.py file
     <details>
@@ -402,12 +406,6 @@ This exercise demonstrates how to extend the voice agent system by adding a comp
 - Adds a completely new domain (car rentals) to the existing hotel and flight agents
 - Semantic search provides accurate policy information retrieval
 - Maintains consistent agent experience while expanding capabilities
-
-#### Testing:
-After implementation, test with queries about:
-- Insurance coverage options and costs
-- Rental requirements and age restrictions
-- Deductibles and additional coverage options
 
 #### Future Enhancements:
 - Expand the policy database with more detailed entries
