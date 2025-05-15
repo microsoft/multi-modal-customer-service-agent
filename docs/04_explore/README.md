@@ -125,7 +125,7 @@
 
 5. Let's add data source for insurance policy / rental policies, etc. with AI Search
 
-    Create a JSON file for car rental policies.  Name the file car_rental_policy.json and store it in the data folder along with the flight & hotel policies:
+   a)  Create a JSON file for car rental policies.  Name the file car_rental_policy.json and store it in the data folder along with the flight & hotel policies:
 
     <details>
     <summary> Click to expand/collapse</summary>
@@ -153,7 +153,7 @@
     </details>
 
 
-    Update the plugin to setup Azure OpenAI client for embeddings, create get_embedding method to generate text embeddings.  Define the SearchClient class with semantic search functionality and finally initialize the search client.
+    b) Update the plugin (car_rental_plugin.py) to setup Azure OpenAI client for embeddings, create get_embedding method to generate text embeddings.  Define the SearchClient class with semantic search functionality and finally initialize the search client.
 
     <details>
     <summary> Click to expand/collapse</summary>
@@ -196,7 +196,7 @@
 
     </details>
 
-    Update the Car_Rental_Tools class to include policy search:
+    c) Update the Car_Rental_Tools class in the plugin (car_rental_plugin.py) to include policy search:
 
     <details>
     <summary> Click to expand/collapse</summary>
@@ -222,7 +222,7 @@
 
     </details>
 
-    Create an embedding generation script & store it in  ./scripts/generate_car_rental_policy_embeddings.py :
+    d) Create an embedding generation script called generate_car_rental_policy_embeddings.py & in  app/backend/scripts folder:
 
     <details>
     <summary> Click to expand/collapse</summary>
@@ -269,7 +269,7 @@
     </details>
 
 
-    Run the embedding generation script in the terminal 
+    e) Run the embedding generation script in the terminal 
 
     <details>
     <summary> Click to expand/collapse</summary>
@@ -377,7 +377,7 @@
 
     </details>
 
-### Summarizing Adding a New Car Rental Agent with Semantic Search
+### Summarizing Exercise 1 - Adding a New Car Rental Agent with Semantic Search
 
 This exercise demonstrates how to extend the voice agent system by adding a completely new domain-specific agent for car rentals, complete with semantic search capabilities for policy information.
 
