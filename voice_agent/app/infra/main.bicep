@@ -120,7 +120,7 @@ param containerAppsSubnetPrefix string = '10.0.2.0/23'
 
 // Organize resources in a resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-${environmentName}'
+  name: environmentName
   location: location
   tags: tags
 }
