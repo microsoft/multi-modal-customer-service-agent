@@ -281,26 +281,139 @@
 
     </details>
 
-    The car rental policy search uses the same semantic search approach as the hotel policies.  The policies are stored in JSON format with embeddings for efficient semantic search.
+    ### Expand to see the complete car_rental_plugins.py file
+    <details>
+    <summary> Click to expand/collapse</summary>
 
-    The Car_Rental_Tools class now includes a method to search policies.
+    ```python
+    from typing import Annotated, Any  
+    from semantic_kernel.functions import kernel_function  
+    import os
+    from openai import AzureOpenAI
+    import json
+    from scipy import spatial
 
-    The embedding generation script needs to be run once to prepare the policy data.
+    # Constants for Azure OpenAI  
+    AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")  
+    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")  
+    AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")
+    AZURE_OPENAI_EMB_ENDPOINT = os.getenv("AZURE_OPENAI_EMB_ENDPOINT", AZURE_OPENAI_ENDPOINT)
+    AZURE_OPENAI_EMB_API_KEY = os.getenv("AZURE_OPENAI_EMB_API_KEY", AZURE_OPENAI_API_KEY)  
+    AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")  
 
-    You can expand the policy database by adding more entries to the JSON file.
+    # Azure OpenAI client setup  
+    embedding_client = AzureOpenAI(  
+        api_key=AZURE_OPENAI_EMB_API_KEY,  
+        azure_endpoint=AZURE_OPENAI_EMB_ENDPOINT,  
+        api_version="2023-12-01-preview"  
+    )  
 
-    After implementing these changes:
+    def get_embedding(text: str, model: str = AZURE_OPENAI_EMB_DEPLOYMENT) -> list[float]:  
+        """Generate text embeddings using Azure OpenAI."""  
+        text = text.replace("\n", " ")  
+        return embedding_client.embeddings.create(input=[text], model=model).data[0].embedding  
 
-    - The car rental agent will be available alongside the hotel and flight agents
-    - The agent can be triggered through intent detection
-    - The agent will have access to car rental specific tools through its plugin
-    - The agent will maintain its own context and persona while handling customer interactions
+    class SearchClient:  
+        """Client for performing semantic search on a knowledge base."""  
+        def __init__(self, emb_map_file_path: str):  
+            with open(emb_map_file_path) as file:  
+                self.chunks_emb = json.load(file)  
+    
+        def find_article(self, question: str, topk: int = 3) -> str:  
+            """Find relevant articles based on cosine similarity."""  
+            input_vector = get_embedding(question)  
+            cosine_list = [  
+                (item['id'], item['policy_text'], 1 - spatial.distance.cosine(input_vector, item['policy_text_embedding']))  
+                for item in self.chunks_emb  
+            ]  
+            cosine_list.sort(key=lambda x: x[2], reverse=True)  
+            cosine_list = cosine_list[:topk]  
+    
+            return "\n".join(f"{chunk_id}\n{content}" for chunk_id, content, _ in cosine_list)  
+
+    # Initialize the search client
+    search_client = SearchClient("./data/car_rental_policy.json")
+
+    # Kernel functions  
+    class Car_Rental_Tools:
+        """Tools for car rental agent to perform various rental operations"""
+    
+        agent_name = "car_rental_agent"  # Name of the agent
+
+        @kernel_function(
+            description="Search for available rental cars",
+            name="search_cars"
+        )
+        async def search_cars(self, location: str, pickup_date: str, return_date: str) -> str:
+            # Mock implementation - replace with actual car rental API
+            return f"Found available cars in {location} from {pickup_date} to {return_date}: \n" \
+                "1. Economy - Toyota Corolla ($45/day)\n" \
+                "2. SUV - Honda CR-V ($65/day)\n" \
+                "3. Luxury - BMW 5 Series ($95/day)"
+
+        @kernel_function(
+            description="Get rental car details",
+            name="get_car_details"
+        )
+        async def get_car_details(self, car_id: str) -> str:
+            # Mock implementation
+            car_details = {
+                "1": "Toyota Corolla: 4 doors, 5 seats, automatic transmission, GPS, bluetooth",
+                "2": "Honda CR-V: 5 doors, 5 seats, automatic transmission, GPS, bluetooth, roof rack",
+                "3": "BMW 5 Series: 4 doors, 5 seats, automatic transmission, GPS, bluetooth, leather seats"
+            }
+            return car_details.get(car_id, "Car not found")
         
-    Test the new agent with various car rental scenarios.
 
-    Future steps to try on your own.
-    - Expand the Car_Rental_Tools class with additional functions as needed.  
-    - Replace mock implementations with actual car rental API integrations
+        @kernel_function(
+            name="search_rental_policies",
+            description="Search car rental and insurance policies for relevant information."
+        )
+        async def search_rental_policies(self, 
+            search_query: Annotated[str, "The search query about rental or insurance policies."]
+        ) -> str:
+            return search_client.find_article(search_query)
+    ```
+
+    </details>
+
+### Summarizing Adding a New Car Rental Agent with Semantic Search
+
+This exercise demonstrates how to extend the voice agent system by adding a completely new domain-specific agent for car rentals, complete with semantic search capabilities for policy information.
+
+#### Files Created:
+- `car_rental_agent_profile.yaml` - Defines the agent's persona and responsibilities
+- `car_rental_plugins.py` - Contains tools for car searching, details, and policy lookups
+- `car_rental_policy.json` - Stores policy data with embeddings for semantic search
+- `scripts/generate_car_rental_policy_embeddings.py` - Script to generate policy embeddings
+
+#### Files Updated:
+- `rtmt.py` - Modified to register and initialize the new car rental agent
+- `utility.py` - Updated to include car rental in intent detection system messages
+
+#### Key Components:
+1. **Agent Profile**: Defines the car rental agent's persona and scope
+2. **Tool Integration**: Custom tools for searching cars, viewing details, and accessing policies
+3. **SearchClient Class**: Implements vector similarity search using cosine distance
+4. **Intent Detection**: Updates to route car rental queries to the specialized agent
+
+#### Integration Benefits:
+- Demonstrates the extensibility of the multi-agent architecture
+- Adds a completely new domain (car rentals) to the existing hotel and flight agents
+- Semantic search provides accurate policy information retrieval
+- Maintains consistent agent experience while expanding capabilities
+
+#### Testing:
+After implementation, test with queries about:
+- Insurance coverage options and costs
+- Rental requirements and age restrictions
+- Deductibles and additional coverage options
+
+#### Future Enhancements:
+- Expand the policy database with more detailed entries
+- Add domain-specific tools to the Car_Rental_Tools class
+- Implement actual API integrations to replace mock implementations
+- Create more sophisticated embedding strategies for better matching
 
 ### Exercise 2: debug/fix/commit flow
   - scenario which 'fails' from a functionality standpoint -> use observability (tracing in AI Foundry), figure out the problem, change system-prompt/etc., run test suite (local run of Evaluations), then PR
