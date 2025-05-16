@@ -32,7 +32,7 @@ The bicep infrastructure deploys an Application Insights resource where you can 
 
 ### Local Configuration
 
-You can see telemetry data if you are running the app locally, in a local dev container, or in Azure via `azd up`. If you are using Github Codespaces, there is no observability data. We recommend you run `azd up` and interact with the app in Azure environment to see observability data.
+You can see telemetry data if you are running the app locally, in a local dev container, or in Azure via `azd up`. If you are using GitHub Codespaces, there is no observability data. We recommend you run `azd up` and interact with the app in Azure environment to see observability data.
 
 Configuration steps to wire up the Aspire Dashboard:
 1. Update the `.env` file with this value: `TELEMETRY_SCENARIO=console,aspire_dashboard`
