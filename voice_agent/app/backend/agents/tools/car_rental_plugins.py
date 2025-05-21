@@ -49,8 +49,6 @@ search_client = SearchClient("./data/car_rental_policy.json")
 # Kernel functions  
 class Car_Rental_Tools:
     """Tools for car rental agent to perform various rental operations"""
-    #TMS why do the other tools have agent_name?  How is it used?  Where is it used?
-    agent_name = "car_rental_agent"  # Name of the agent
 
     @kernel_function(
         description="Search for available rental cars",
