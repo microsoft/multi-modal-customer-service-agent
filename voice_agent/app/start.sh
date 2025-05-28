@@ -71,8 +71,15 @@ npm install || { popd >/dev/null; kill "$backend_pid"; die "Frontend npm install
   
 echo  
 echo "Starting frontend dev server…"  
-  
-export VITE_BACKEND_WS_URL="ws://localhost:8765"  
+
+# If running in GitHub Codespaces, use the port forwarding domain
+# Otherwise, default to localhost:8765 for WebSocket connections.  
+if [[ -n "${CODESPACE_NAME:-}" && -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]]; then
+  export VITE_BACKEND_WS_URL="wss://${CODESPACE_NAME}-8765.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+else
+  export VITE_BACKEND_WS_URL="ws://localhost:8765"
+fi
+
 npm run dev &  
 frontend_pid=$!  
   
