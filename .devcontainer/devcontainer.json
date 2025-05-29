@@ -11,7 +11,7 @@
             "version": "20"
         }
     },
-    "postCreateCommand": "[ -f voice_agent/app/backend/.env.example ] && cp -n voice_agent/app/backend/.env.example voice_agent/app/backend/.env || true",
+    "postCreateCommand": "[ -f voice_agent/app/backend/.env.sample ] && cp -n voice_agent/app/backend/.env.sample voice_agent/app/backend/.env || true",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
