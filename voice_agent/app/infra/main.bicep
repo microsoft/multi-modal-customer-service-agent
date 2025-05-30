@@ -198,8 +198,6 @@ module aiServices './core/ai/ai-services.bicep' = {
     applicationInsightsResourceId: monitoring.outputs.applicationInsightsId
     cognitiveServicesAccountName: '${abbrs.cognitiveServicesAccounts}${resourceToken}'
     gpt4oDeploymentName: 'gpt-4o'
-    gpt4oModelName: 'gpt-4o'
-    gpt4oModelVersion: '2024-05-13'
     realtimeModelDeploymentName: 'gpt-4o-realtime-preview'
     embeddingModelDeploymentName: 'text-embedding-ada-002'
     gpt4oMiniModelDeploymentName: 'gpt-4o-mini'
@@ -376,7 +374,7 @@ module storageContribRoleApi 'core/security/role.bicep' = {
 }
 
 module dataScientistRole 'core/security/subscription-role.bicep' = {
-  name: 'data-scientist-role'
+  name: 'data-scientist-role-${resourceToken}'
   params: {
     principalId: backendApp.outputs.SERVICE_BACKEND_PRINCIPAL_ID
     roleDefinitionId: 'f6c7c914-8db3-469d-8ca1-694a8f32e121' // Azure ML Data Scientist
@@ -391,12 +389,6 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registry
 output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
 output AZURE_CONTAINER_REGISTRY_RESOURCE_GROUP string = containerApps.outputs.registryName
 output AZURE_LOCATION string = location
-output AZURE_FOUNDRY_HUB_NAME string = aiServices.outputs.name
-output AZURE_FOUNDRY_HUB_ID string = aiServices.outputs.resourceId
-output AZURE_FOUNDRY_PROJECT_NAME string = aiServices.outputs.aiProjectName
-output AZURE_FOUNDRY_PROJECT_ID string = aiServices.outputs.aiProjectId
-output AZURE_AI_SERVICE_CONNECTION_NAME string = aiServices.outputs.aiServiceConnectionName
-output AZURE_AI_SERVICE_CONNECTION_ID string = aiServices.outputs.aiServiceConnectionId
 output AZURE_COGNITIVE_SERVICES_NAME string = aiServices.outputs.cognitiveServicesAccountName
 output AZURE_COGNITIVE_SERVICES_ID string = aiServices.outputs.cognitiveServicesAccountId
 output AZURE_COGNITIVE_SERVICES_ENDPOINT string = aiServices.outputs.cognitiveServicesEndpoint
