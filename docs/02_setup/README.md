@@ -1,41 +1,25 @@
 # Setup your Environment 
 
-## Running this sample
+- [Running the sample locally](#running-this-sample-locally)
+   - [Prerequisites](#prerequisites)
+   - [Run in GitHub Codespaces](#run-in-github-codespaces)
+   - [Run Locally](#run-in-local-environment)
+- [Deploy to Azure](#deploy-to-azure-using-azd)
 
-We'll follow 4 steps to get this example running in your own environment: pre-requisites, creating an index, setting up the environment, and running the app.
+## Running this sample locally
 
-### Pre-requisites
+After completing the prerequesites choose one of the options to run the sample locally.
+
+### Prerequisites
 
 You'll need instances of the following Azure services. You can re-use service instances you have already or create new ones.
 
-1. [Azure OpenAI](https://ms.portal.azure.com/#create/Microsoft.CognitiveServicesOpenAI), with 2 model deployments, one of the **gpt-4o-realtime-preview** model, a regular **gpt-4o-mini** model.
+1. [Azure OpenAI](https://ms.portal.azure.com/#create/Microsoft.CognitiveServicesOpenAI), with 2 model deployment: 
+   1. **gpt-4o-realtime-preview** model, named "gpt-4o-realtime-preview"
+   1. **gpt-4o-mini** model
 1. [Optional] Train an intent_detection model with a SLM using Azure AI Studio. Check [the training data](./intent_detection_model)
 
-### Setting up the environment
-
-The app needs to know which service endpoints to use for the Azure OpenAI and Azure AI Search. The following variables can be set as environment variables, or you can create a ".env" file in the "app/backend/" directory with this content.
-
-The voice agent can use a fine-tuned SLM deployment to classify intent to minimize latency. If you do not have this deployment available then you can use the Azure OpenAI **gpt-4o-mini** deployment, which is fast enough to classify intent with minimal impact on latency. To use **gpt-4o-mini** leave the `INTENT_SHIFT_API_*` env variables empty and supply `AZURE_OPENAI_4O_MINI_DEPLOYMENT`.
-
-```bash
-AZURE_OPENAI_ENDPOINT="https://.openai.azure.com/"
-AZURE_OPENAI_API_KEY=
-AZURE_OPENAI_API_VERSION=2024-10-01-preview
-AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_EMB_DEPLOYMENT="text-embedding-ada-002"
-AZURE_OPENAI_EMB_ENDPOINT= [Optional] if different from your realtime endpoint
-AZURE_OPENAI_EMB_API_KEY= [Optional] if providing an embedding endpoint
-AZURE_OPENAI_4O_MINI_DEPLOYMENT=YOUR_AZURE_OPENAI_4O_MINI_DEPLOYMENT_NAME
-INTENT_SHIFT_API_KEY=
-INTENT_SHIFT_API_URL=https://YOUR_ML_DEPLOYMENT.westus2.inference.ml.azure.com/score
-INTENT_SHIFT_API_DEPLOYMENT=YOUR_ML_DEPLOYMENT_NAME
-AZURE_OPENAI_API_VERSION=2024-10-01-preview
-AZURE_OPENAI_REALTIME_DEPLOYMENT_NAME=gpt-4o-realtime-preview
-```
-
-### Running the app
-
-#### GitHub Codespaces
+### Run in GitHub Codespaces
 
 You can run this repo virtually by using GitHub Codespaces, which will open a web-based VS Code in your browser:
 
@@ -43,17 +27,30 @@ You can run this repo virtually by using GitHub Codespaces, which will open a we
 
 Once the codespace opens (this may take several minutes), open a new terminal.
 
-#### VS Code Dev Containers
+1. Setting up the environment
 
-You can run the project in your local VS Code Dev Container using the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers):
+   The app needs to know which service endpoint to use for the Azure OpenAI. Set the following variables in the ".env" file in the "app/backend/" directory with the values from your Azure OpenAI resource.
 
-1. Start Docker Desktop (install it if not already installed)
-2. Open the project:
+   ```bash
+   # Azure OpenAI settings
+   AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com/
+   AZURE_OPENAI_API_KEY=<your-api-key>
+   AZURE_OPENAI_4O_MINI_DEPLOYMENT=<your-azure-openai-4o-mini-deployment-name>
+   AZURE_OPENAI_EMB_DEPLOYMENT=<your-text-embedding-ada-002-deployment-name> # must be model type: text-embedding-ada-002
+   ```
+   [Optional] The voice agent can use a fine-tuned SLM deployment to classify intent to minimize latency. If you do not have this deployment available then you can use the Azure OpenAI **gpt-4o-mini** deployment, which is fast enough to classify intent with minimal impact on latency. To use **gpt-4o-mini** leave the `INTENT_SHIFT_API_*` env variables empty.
 
-    [![Open in Dev Containers](https://img.shields.io/static/v1?style=for-the-badge&label=Dev%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/microsoft/multi-modal-customer-service-agent)
-3. In the VS Code window that opens, once the project files show up (this may take several minutes), open a new terminal.
+1. Running the app
 
-#### Local environment
+   In the terminal run this command to start the app:
+
+   ```bash
+   cd voice_agent/app
+   ./start.sh
+   ```
+1. Once the scripts completes, click on the link in the terminal to open the app in the browser: http://127.0.0.1:5173/
+
+### Run in Local environment
 
 1. Install the required tools:
    - [Node.js](https://nodejs.org/en)
@@ -63,7 +60,18 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
    - [Powershell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
 
 1. Clone the repo (`git clone https://github.com/microsoft/multi-modal-customer-service-agent`)
-1. Ensure env variables are set per [Setting up the environment](#2-setting-up-the-environment)
+1. The app needs to know which service endpoint to use for the Azure OpenAI. Copy the .env.sample file in the "app/backend/" directory into a new .env file in the same directory and set the following variables with the values from your Azure OpenAI resource.
+
+   ```bash
+   # Azure OpenAI settings
+   AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com/
+   AZURE_OPENAI_API_KEY=<your-api-key>
+   AZURE_OPENAI_4O_MINI_DEPLOYMENT=<your-azure-openai-4o-mini-deployment-name>
+   AZURE_OPENAI_EMB_DEPLOYMENT=<your-text-embedding-ada-002-deployment-name> # must be model type: text-embedding-ada-002
+   ```
+
+   [Optional] The voice agent can use a fine-tuned SLM deployment to classify intent to minimize latency. If you do not have this deployment available then you can use the Azure OpenAI **gpt-4o-mini** deployment, which is fast enough to classify intent with minimal impact on latency. To use **gpt-4o-mini** leave the `INTENT_SHIFT_API_*` env variables empty.
+
 1. Run this command to start the app:
 
    Windows:
@@ -80,9 +88,10 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
    ./start.sh
    ```
 
-1. The app is available on http://localhost:8765
+1. Once the scripts completes, click on the link in the terminal to open the app in the browser: http://127.0.0.1:5173/
 
-#### Deploy to Azure using azd
+## Deploy to Azure using azd
+You can deploy this sample to Azure using the [Azure Developer CLI (`azd`)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/).
 
 1. Download and install [azd](https://aka.ms/azd/install) (Azure Developer CLI)
 
