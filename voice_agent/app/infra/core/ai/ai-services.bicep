@@ -22,20 +22,11 @@ param cognitiveServicesAccountName string = foundryHubName
 @description('Name of the GPT-4o model deployment')
 param gpt4oDeploymentName string = 'gpt-4o'
 
-@description('GPT-4o model name')
-param gpt4oModelName string = 'gpt-4o'
-
-@description('GPT-4o model version')
-param gpt4oModelVersion string = '2024-05-13'
-
 @description('Capacity for the GPT-4o model deployment')
 param gpt4oCapacity int = 1
 
 @description('Name of the embedding model deployment')
 param embeddingModelDeploymentName string = 'text-embedding-ada-002'
-
-@description('Embedding model version')
-param embeddingModelVersion string = '2'
 
 @description('Name of the GPT-4o mini deployment')
 param gpt4oMiniModelDeploymentName string = 'gpt-4o-mini'
@@ -63,9 +54,6 @@ param aiFoundryProjectName string = '${foundryHubName}-project'
 
 @description('Display name for the AI Foundry Project')
 param aiFoundryProjectDisplayName string = 'Voice Agent Multi Modal Workshop'
-
-@description('API version for Azure OpenAI API')
-param apiVersion string = '2023-05-15'
 
 @description('Abbreviations to use for resource naming')
 param abbrs object
@@ -108,64 +96,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   tags: tags
 }
 
-resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-07-01-preview' = {
-  name: foundryHubName
-  location: location
-  kind: 'hub'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    description: 'Azure AI Foundry Hub'
-    friendlyName: 'AI Foundry Hub'
-    publicNetworkAccess: 'Enabled'
-    storageAccount: storageAccount.id
-    containerRegistry: containerRegistry.outputs.resourceId
-    applicationInsights: applicationInsightsResourceId
-    keyVault: keyVault.outputs.resourceId
-  }
-  tags: tags
-}
-
-// Create the AI Foundry Project
-resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-07-01-preview' = {
-  name: aiFoundryProjectName
-  location: location
-  kind: 'project'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    description: 'AI Foundry Project for Video RAG'
-    friendlyName: aiFoundryProjectDisplayName
-    hubResourceId: aiHub.id
-    publicNetworkAccess: 'Enabled'
-  }
-  tags: tags
-}
-
-// Connect the Azure OpenAI endpoint to the AI Foundry Project
-resource aiServiceConnection 'Microsoft.MachineLearningServices/workspaces/connections@2023-08-01-preview' = {
-  parent: aiProject
-  name: '${foundryHubName}-ai-connection'
-  properties: {
-    category: 'AzureOpenAI'
-    target: cognitiveServicesAccount.properties.endpoint
-    authType: 'ApiKey'
-    isSharedToAll: true
-    credentials: {
-      key: cognitiveServicesAccount.listKeys().key1
-    }
-    metadata: {
-      resourceName: cognitiveServicesAccount.name
-      ApiType: 'Azure'
-      ApiVersion: apiVersion
-    }
-  }
-}
-
 // Add Cognitive Services account of kind AIServices
-resource cognitiveServicesAccount 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+resource cognitiveServicesAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: cognitiveServicesAccountName
   location: location
   tags: tags
@@ -173,73 +105,33 @@ resource cognitiveServicesAccount 'Microsoft.CognitiveServices/accounts@2023-05-
   sku: {
     name: accountSku
   }
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
-    customSubDomainName: cognitiveServicesAccountName
-    networkAcls: {
-      defaultAction: 'Allow'
-    }
+    allowProjectManagement: true
     publicNetworkAccess: 'Enabled'
   }
 }
 
-var contentUnderstandingEndpoint = 'https://${cognitiveServicesAccountName}.services.ai.azure.com/'
-
-// User-assigned managed identity for the deployment script
-resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-deploymentscript-${resourceToken}'
+// Create the AI Foundry Project
+resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+  parent: cognitiveServicesAccount
+  name: aiFoundryProjectName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    description: aiFoundryProjectDisplayName
+  }
   tags: tags
 }
 
-// Create role assignment for the deployment script identity to manage Cognitive Services
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, deploymentScriptIdentity.id, 'Contributor')
-  scope: cognitiveServicesAccount
-  properties: {
-    principalId: deploymentScriptIdentity.properties.principalId
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c') // Contributor role
-    principalType: 'ServicePrincipal'
-  }
-}
+var contentUnderstandingEndpoint = 'https://${cognitiveServicesAccountName}.services.ai.azure.com/'
 
 // Generate a unique token for resource naming
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, cognitiveServicesAccountName)
-
-
-// resource chatModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
-//   parent: cognitiveServicesAccount
-//   name: gpt4oDeploymentName
-//   sku: {
-//     capacity: gpt4oCapacity
-//     name: openAiSkuName
-//   }
-//   properties: {
-//     model: {
-//       format: openAiModelFormat
-//       name: gpt4oModelName
-//       version: gpt4oModelVersion
-//     }
-//   }
-// }
-
-// resource embeddingModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
-//   parent: cognitiveServicesAccount
-//   name: embeddingModelDeploymentName
-//   sku: {
-//     capacity: gpt4oCapacity
-//     name: openAiSkuName
-//   }
-//   properties: {
-//     model: {
-//       format: openAiModelFormat
-//       name: embeddingModelDeploymentName
-//       version: embeddingModelVersion
-//     }
-//   }
-//   dependsOn: [
-//     chatModelDeployment
-//   ]
-// }
 
 resource gpt4oMiniModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
   parent: cognitiveServicesAccount
@@ -295,12 +187,4 @@ output embeddingModelDeploymentName string = embeddingModelDeploymentName
 output gpt4oMiniModelDeploymentName string = gpt4oMiniModelDeploymentName
 output gpt4oMiniModelVersion string = gpt4oMiniModelVersion
 output realtimeModelDeploymentName string = realtimeModelDeploymentName
-output aiProjectName string = aiProject.name
-output aiProjectId string = aiProject.id
-output aiProjectPrincipalId string = aiProject.identity.principalId
-output aiServiceConnectionName string = aiServiceConnection.name
-output aiServiceConnectionId string = aiServiceConnection.id
-output resourceId string = aiHub.id
-output name string = aiHub.name
-output principalId string = aiHub.identity.principalId
 output containerRegistryName string = containerRegistry.outputs.name
