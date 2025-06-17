@@ -242,13 +242,12 @@ class Car_Rental_Tools:
         }
         return car_details.get(car_id, "Car not found - please check the car ID")
 ```
+</details>
 
 **📝 What this does:**
 - Provides detailed information about specific vehicles
 - Uses a simple lookup system for mock data
 - Includes error handling for invalid car IDs
-
-</details>
 
 **✅ Validation Checklist:**
 - [ ] File created in correct directory: `voice_agent\app\backend\agents\tools\`
@@ -302,13 +301,24 @@ Create the agent configuration file that defines the car rental agent's persona 
 
 **File Path:** `c:\Code\multi-modal-customer-service-agent\voice_agent\app\backend\agents\agent_profiles\car_rental_agent_profile.yaml`
 <details>
-<summary>🔽 Click to expand car_rental_agent_profile.yaml code</summary>```yaml
-name: car_rental_agent
-# ...rest of code...
+<summary>🔽 Click to expand car_rental_agent_profile.yaml code</summary>
+
+```yaml  
+    name: car_rental_agent
+    default_agent: false
+    persona: |
+        You are a helpful car rental agent assisting {customer_name} (ID: {customer_id}).
+        Your role is to help customers find and book rental cars that match their needs.
+        
+        Key responsibilities:
+        - Search for available rental cars based on location and dates
+        - Provide detailed information about specific vehicles
+        - Explain rental policies and requirements
+        - Help with booking process
+        
+        Always be professional and courteous while providing accurate information.
 ```
 </details>
-
-**✅ Validation:** Confirm the YAML file is properly formatted and saved in the agent_profiles directory.
 
 **✅ Validation:** Confirm the YAML file is properly formatted and saved in the agent_profiles directory.
 
@@ -376,9 +386,11 @@ Update the `detect_intent` method to include the car rental agent in the system 
 <details>
     <summary>🔽 Click to expand intent detection update</summary>
 
-    ```python
+**Update message parameter to include:**
+
+```python
     - **car_rental_agent**: Deal with car rentals, vehicle reservations, changes, and general car rental policy questions.
-    ```
+```
 </details>
 
 > **📝 Note:** The intent detection model has already been updated to recognize car rental-related queries. See the `intent_detection_model` directory for training data and model details.
@@ -434,7 +446,7 @@ Create a structured JSON file containing car rental policy information that will
 <details>
     <summary>🔽 Click to expand car_rental_policy.json content</summary>
 
-    ```json
+```json
     [
         {
             "id": "insurance_basic",
@@ -452,7 +464,7 @@ Create a structured JSON file containing car rental policy information that will
             "policy_text_embedding": null
         }
     ]
-    ```
+```
 </details>
 
 **✅ Validation:** Verify the JSON file is valid and saved in the correct data directory.
@@ -661,95 +673,117 @@ Congratulations! You have successfully:
 For reference, here's the complete `car_rental_plugins.py` file:
 
 <details>
-<summary>Click to expand/collapse</summary>
+<summary>🔽 Click to see the Complete Car Rental Plugin Reference</summary>
 
 ```python
-from typing import Annotated, Any
-from semantic_kernel.functions import kernel_function  
+from typing import List
+from semantic_kernel import Kernel
+from semantic_kernel.functions import kernel_function
 import os
-from openai import AzureOpenAI
 import json
 from scipy import spatial
+from openai import AzureOpenAI
 
-    # Constants for Azure OpenAI  
-    AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")  
-    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")  
-    AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")
-    AZURE_OPENAI_EMB_ENDPOINT = os.getenv("AZURE_OPENAI_EMB_ENDPOINT", AZURE_OPENAI_ENDPOINT)
-    AZURE_OPENAI_EMB_API_KEY = os.getenv("AZURE_OPENAI_EMB_API_KEY", AZURE_OPENAI_API_KEY)  
-    AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")  
+class Car_Rental_Tools:
+    """Tools for car rental agent to perform various rental operations"""
 
-    # Azure OpenAI client setup  
-    embedding_client = AzureOpenAI(  
-        api_key=AZURE_OPENAI_EMB_API_KEY,  
-        azure_endpoint=AZURE_OPENAI_EMB_ENDPOINT,  
-        api_version="2023-12-01-preview"  
-    )  
-
-    def get_embedding(text: str, model: str = AZURE_OPENAI_EMB_DEPLOYMENT) -> list[float]:  
-        """Generate text embeddings using Azure OpenAI."""  
-        text = text.replace("\n", " ")  
-        return embedding_client.embeddings.create(input=[text], model=model).data[0].embedding  
-
-    class SearchClient:  
-        """Client for performing semantic search on a knowledge base."""  
-        def __init__(self, emb_map_file_path: str):  
-            with open(emb_map_file_path) as file:  
-                self.chunks_emb = json.load(file)  
-    
-        def find_article(self, question: str, topk: int = 3) -> str:  
-            """Find relevant articles based on cosine similarity."""  
-            input_vector = get_embedding(question)  
-            cosine_list = [  
-                (item['id'], item['policy_text'], 1 - spatial.distance.cosine(input_vector, item['policy_text_embedding']))  
-                for item in self.chunks_emb  
-            ]  
-            cosine_list.sort(key=lambda x: x[2], reverse=True)  
-            cosine_list = cosine_list[:topk]  
-    
-            return "\n".join(f"{chunk_id}\n{content}" for chunk_id, content, _ in cosine_list)  
-
-    # Initialize the search client
-    search_client = SearchClient("./data/car_rental_policy.json")
-
-    # Kernel functions  
-    class Car_Rental_Tools:
-        """Tools for car rental agent to perform various rental operations"""
-    
-        agent_name = "car_rental_agent"  # Name of the agent
-
-        @kernel_function(
-            description="Search for available rental cars",
-            name="search_cars"
-        )
-        async def search_cars(self, location: str, pickup_date: str, return_date: str) -> str:
-            # Mock implementation - replace with actual car rental API
-            return f"Found available cars in {location} from {pickup_date} to {return_date}: \n" \
+    @kernel_function(
+        description="Search for available rental cars based on location and dates",
+        name="search_cars"
+    )
+    async def search_cars(self, location: str, pickup_date: str, return_date: str) -> str:
+        """
+        Search for available rental cars at a specific location and date range.
+        
+        Args:
+            location: The pickup location (e.g., "New York", "LAX Airport")
+            pickup_date: The rental start date (e.g., "2025-07-15")
+            return_date: The rental end date (e.g., "2025-07-20")
+            
+        Returns:
+            Formatted string with available car options
+        """
+        # Mock implementation - in production, this would call a real car rental API
+        return f"Found available cars in {location} from {pickup_date} to {return_date}: \n" \
                 "1. Economy - Toyota Corolla ($45/day)\n" \
                 "2. SUV - Honda CR-V ($65/day)\n" \
                 "3. Luxury - BMW 5 Series ($95/day)"
 
-        @kernel_function(
-            description="Get rental car details",
-            name="get_car_details"
-        )
-        async def get_car_details(self, car_id: str) -> str:
-            # Mock implementation
-            car_details = {
-                "1": "Toyota Corolla: 4 doors, 5 seats, automatic transmission, GPS, bluetooth",
-                "2": "Honda CR-V: 5 doors, 5 seats, automatic transmission, GPS, bluetooth, roof rack",
-                "3": "BMW 5 Series: 4 doors, 5 seats, automatic transmission, GPS, bluetooth, leather seats"
-            }
-            return car_details.get(car_id, "Car not found")
+    @kernel_function(
+        description="Get detailed information about a specific rental car",
+        name="get_car_details"
+    )
+    async def get_car_details(self, car_id: str) -> str:
+        """
+        Get detailed specifications and features for a specific car.
         
+        Args:
+            car_id: The ID of the car to get details for (e.g., "1", "2", "3")
+            
+        Returns:
+            Detailed car specifications and features
+        """
+        # Mock car database - in production, this would query a real database
+        car_details = {
+            "1": "Toyota Corolla: 4 doors, 5 seats, automatic transmission, GPS, bluetooth",
+            "2": "Honda CR-V: 5 doors, 5 seats, automatic transmission, GPS, bluetooth, roof rack",
+            "3": "BMW 5 Series: 4 doors, 5 seats, automatic transmission, GPS, bluetooth, leather seats"
+        }
+        return car_details.get(car_id, "Car not found - please check the car ID")
 
-        @kernel_function(
-            name="search_rental_policies",
-            description="Search car rental and insurance policies for relevant information."
-        )
-        async def search_rental_policies(self, 
-            search_query: Annotated[str, "The search query about rental or insurance policies."]        ) -> str:
-            return search_client.find_article(search_query)
+    @kernel_function(
+        description="Search car rental policies using semantic search.",
+        name="search_rental_policy"
+    )
+    async def search_rental_policy(self, question: str) -> str:
+        """
+        Search the car rental policy knowledge base for relevant information.
+        
+        Args:
+            question: The user's policy-related question
+            
+        Returns:
+            Relevant policy text(s) from the knowledge base
+        """
+        return search_client.find_article(question)
+
+# Azure OpenAI embedding environment variables
+AZURE_OPENAI_EMB_API_KEY = os.getenv("AZURE_OPENAI_EMB_API_KEY")
+AZURE_OPENAI_EMB_ENDPOINT = os.getenv("AZURE_OPENAI_EMB_ENDPOINT")
+AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT", "text-embedding-ada-002")
+
+# Azure OpenAI client setup
+embedding_client = AzureOpenAI(
+    api_key=AZURE_OPENAI_EMB_API_KEY,
+    azure_endpoint=AZURE_OPENAI_EMB_ENDPOINT,
+    api_version="2023-12-01-preview"
+)
+
+def get_embedding(text: str, model: str = AZURE_OPENAI_EMB_DEPLOYMENT) -> list[float]:
+    """Generate text embeddings using Azure OpenAI."""
+    text = text.replace("\n", " ")
+    return embedding_client.embeddings.create(input=[text], model=model).data[0].embedding
+
+class SearchClient:
+    """Client for performing semantic search on a knowledge base."""
+    def __init__(self, emb_map_file_path: str):
+        with open(emb_map_file_path) as file:
+            self.chunks_emb = json.load(file)
+
+    def find_article(self, question: str, topk: int = 3) -> str:
+        """Find relevant articles based on cosine similarity."""
+        input_vector = get_embedding(question)
+        cosine_list = [
+            (item['id'], item['policy_text'], 1 - spatial.distance.cosine(input_vector, item['policy_text_embedding']))
+            for item in self.chunks_emb if item['policy_text_embedding'] is not None
+        ]
+        cosine_list.sort(key=lambda x: x[2], reverse=True)
+        cosine_list = cosine_list[:topk]
+        return "\n".join(f"{chunk_id}\n{content}" for chunk_id, content, _ in cosine_list)
+
+# Initialize the search client
+search_client = SearchClient(os.path.join(os.path.dirname(__file__), '../../data/car_rental_policy.json'))
+
 ```
 </details>
 
