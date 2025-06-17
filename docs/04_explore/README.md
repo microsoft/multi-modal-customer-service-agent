@@ -158,7 +158,7 @@ Create a new file `car_rental_plugins.py` in `voice_agent\app\backend\agents\too
 
 Before we write the code, let's understand what we're building:
 
-- **`@sk_function`**: This decorator tells Semantic Kernel that this function can be called by the LLM
+- **`@kernel_function`**: This decorator tells Semantic Kernel that this function can be called by the LLM
 - **`description`**: Helps the LLM understand when to use this function
 - **`name`**: The function name the LLM will reference
 - **Async functions**: All agent tools are asynchronous for better performance
@@ -169,7 +169,7 @@ Before we write the code, let's understand what we're building:
 ```python
 from typing import List
 from semantic_kernel import Kernel
-from semantic_kernel.skill_definition import sk_function
+from semantic_kernel.functions import kernel_function
 
 class Car_Rental_Tools:
     """Tools for car rental agent to perform various rental operations"""
@@ -186,7 +186,7 @@ class Car_Rental_Tools:
 <summary>🔽 Click to expand car_rental_plugins.py - Part 2: Car Search Function</summary>
 
 ```python
-    @sk_function(
+    @kernel_function(
         description="Search for available rental cars based on location and dates",
         name="search_cars"
     )
@@ -220,7 +220,7 @@ class Car_Rental_Tools:
 <summary>🔽 Click to expand car_rental_plugins.py - Part 3: Car Details Function</summary>
 
 ```python
-    @sk_function(
+    @kernel_function(
         description="Get detailed information about a specific rental car",
         name="get_car_details"
     )
@@ -253,7 +253,7 @@ class Car_Rental_Tools:
 **✅ Validation Checklist:**
 - [ ] File created in correct directory: `voice_agent\app\backend\agents\tools\`
 - [ ] All imports are correct and no syntax errors
-- [ ] Functions are properly decorated with `@sk_function`
+- [ ] Functions are properly decorated with `@kernel_function`
 - [ ] Function descriptions clearly explain their purpose
 - [ ] Mock data returns realistic car rental information
 
@@ -261,7 +261,7 @@ class Car_Rental_Tools:
 - **Import Error**: Ensure Semantic Kernel is installed: `pip install semantic-kernel`
 - **Directory Not Found**: Create the directory structure if it doesn't exist
 - **Syntax Errors**: Check Python indentation and parentheses matching
-- **Function Not Found**: Verify the `@sk_function` decorator is applied correctly
+- **Function Not Found**: Verify the `@kernel_function` decorator is applied correctly
 
 **🧪 Test Your Work:**
 Try creating a simple test script to verify your functions work:
