@@ -829,39 +829,111 @@ You'll work with an artificial performance problem in the multi-agent system and
 
 ### Exercise 1: Upgrade LLM and Evaluate with Azure AI Evaluation SDK
 
-#### Objective
-For the flight_agent in the voice_agent project, evaluate the current LLM.  Then upgrade the LLM (e.g., from gpt-4 to gpt-4o) and evaluate the impact using the Azure AI Evaluation SDK for Python.
+#### Learning Objectives
+By completing this exercise, you will learn how to:
+- Implement systematic LLM evaluation using industry-standard metrics
+- Use the Azure AI Evaluation SDK to assess AI agent performance
+- Compare different models quantitatively to make data-driven decisions
+- Establish performance baselines for AI systems
+- Track performance improvements over time
+- Apply best practices for model upgrades in production
 
 #### Prerequisites
+- Completed [Environment Setup](../02_setup/README.md)
 - Basic understanding of Python and VS Code
 - Access to Azure OpenAI resources
-- Understanding of LLM evaluation concepts
+- Familiarity with AI evaluation concepts
+- Understanding of the flight agent implementation
+
+#### Estimated Time
+90 minutes
+
+#### Why LLM Evaluation Matters
+
+Before we dive into the technical implementation, let's understand why rigorous model evaluation is critical in production AI systems:
+
+##### 🔍 The Importance of Systematic Evaluation
+LLM-powered agents can be unpredictable, and changes that seem minor can have significant impacts on:
+
+- **Functional Correctness**: Does the agent perform required tasks accurately?
+- **Reliability**: Does the agent behave consistently across similar inputs?
+- **Safety**: Does the agent avoid harmful or incorrect outputs?
+- **Efficiency**: Does the agent complete tasks with minimal interactions?
+
+##### 📊 Key Evaluation Metrics Explained
+
+When evaluating AI agents, different metrics reveal different aspects of performance:
+
+| Metric | What It Measures | Why It Matters | Ideal Score |
+|--------|------------------|----------------|-------------|
+| **Groundedness** | How factually accurate responses are based on provided context | Prevents hallucinations and misinformation | 1.0 (high) |
+| **Coherence** | How logical and well-structured responses are | Ensures clear communication | 1.0 (high) |
+| **Relevance** | How well responses address the user's query | Prevents off-topic responses | 1.0 (high) |
+| **Intent Resolution** | Accuracy in identifying the user's intent | Ensures correct understanding of requests | 1.0 (high) |
+| **Tool Call Accuracy** | Correct tool selection and parameter passing | Prevents errors in automated actions | 1.0 (high) |
+| **Task Adherence** | Staying focused on the required task | Prevents scope creep and distractions | 1.0 (high) |
+
+##### 📈 Performance Tracking Approach
+
+To effectively monitor LLM performance over time:
+
+1. **Establish baseline** with current model
+2. **Track deltas** when making changes (model, prompts, etc.)
+3. **Maintain a test suite** covering diverse scenarios
+4. **Log results** historically to identify trends or regressions
 
 #### Steps Overview
 
-1. Review current LLM 
-2. Install required packages
-3. Create & understand the evaluation script
-4. Run the evaluation
-5. Analyze results
+1. Review current LLM configuration 
+2. Install required evaluation packages
+3. Create & understand the evaluation framework
+4. Run baseline evaluation
+5. Analyze baseline results
 6. Upgrade the LLM
-7. Rerun the evaluation
-8. Analyze and compare results between the runs
+7. Run comparative evaluation
+8. Analyze performance improvements
+9. Document findings and recommendations
 
-#### Step 1: Review current LLM
+#### Step 1: Review Current LLM Configuration
 
-Review the current LLM environment variable.  It is in a `.env` file in the backend directory.
+First, let's examine the current model configuration to understand our starting point.
+
+**🎯 What This Step Accomplishes:**
+- Identifies the currently deployed model
+- Establishes the configuration we'll be comparing against
+- Ensures we're testing the correct deployment
+
+Review the current LLM environment variable in the `.env` file in the backend directory:
 
 ```
 AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
 ```
 
-#### Step 2: Install Required Packages
+This variable tells us which Azure OpenAI model deployment is currently being used by the flight agent. In this case, it's using `gpt-4o-mini`, which is a smaller, faster version of GPT-4o.
+
+**📝 Key Model Characteristics:**
+- **GPT-4o-mini**: Optimized for speed and cost with reasonable quality
+- **Strengths**: Fast responses, lower cost, good for common queries
+- **Limitations**: May struggle with complex reasoning or edge cases
+
+**✅ Validation Checklist:**
+- [ ] Confirmed current model deployment name
+- [ ] Noted model version for reference
+- [ ] Checked if model supports all required capabilities (tool use, etc.)
+
+#### Step 2: Install Required Evaluation Packages
+
+The Azure AI Evaluation SDK provides comprehensive tools for assessing model performance.
+
+**🎯 What This Step Accomplishes:**
+- Sets up the required dependencies for evaluation
+- Ensures consistent evaluation across different runs
+- Prepares the environment for testing multiple models
 
 Install the Azure AI Evaluation SDK:
 
 ```bash
-pip install azure-ai-evaluation dotenv
+pip install azure-ai-evaluation python-dotenv
 ```
 
 Or add these lines to `voice_agent/app/backend/requirements.txt`:
@@ -877,15 +949,35 @@ Then run:
 pip install -r voice_agent/app/backend/requirements.txt
 ```
 
-#### Step 3: Create & underestand the Evaluation Script
+**📋 What We're Installing:**
+- **azure-ai-evaluation**: Microsoft's SDK for evaluating LLM performance
+- **python-dotenv**: For loading environment variables from .env files
 
-Create a new file at `voice_agent/app/backend/tests/test_flight_agent_evaluation.py` with the following content:
+**✅ Validation Checklist:**
+- [ ] Packages installed successfully
+- [ ] No version conflicts or dependency issues
+- [ ] Environment ready for evaluation tasks
+
+#### Step 3: Create the Evaluation Framework
+
+Now we'll create a comprehensive evaluation script that tests the flight agent's performance across multiple dimensions and scenarios.
+
+**🎯 What This Step Accomplishes:**
+- Defines relevant test cases that exercise the agent's capabilities
+- Configures multiple evaluation metrics
+- Creates a reusable framework for ongoing evaluations
+
+Create a new file at `voice_agent/app/backend/tests/test_flight_agent_evaluation.py`.
+
+##### Core Components of the Evaluation Framework
 
 <details>
-<summary>Click to expand/collapse</summary>
+<summary>🔽 Click to expand Part 1: Imports and Configuration</summary>
 
 ```python
 import os
+import json
+from datetime import datetime
 from azure.ai.evaluation import (
     GroundednessEvaluator, 
     CoherenceEvaluator, 
@@ -904,11 +996,27 @@ model = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-4o-mini")
 
 # Model config for evaluators
 model_config = {
-    "azure_deployment": model,  # or your preferred model
+    "azure_deployment": model,  # The current model deployment
     "azure_endpoint": endpoint,
     "api_key": api_key
 }
 
+# Create a unique run ID for tracking this evaluation session
+run_id = f"{model}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+```
+
+**📝 What This Does:**
+- Imports required evaluation metrics from Azure AI Evaluation SDK
+- Loads environment variables for Azure OpenAI access
+- Creates a configuration for the evaluator models
+- Sets up a unique run ID to track evaluation results over time
+
+</details>
+
+<details>
+<summary>🔽 Click to expand Part 2: Tool Definitions</summary>
+
+```python
 # Flight agent tool definitions for ToolCallAccuracyEvaluator
 flight_agent_tool_definitions = [
     {
@@ -1032,10 +1140,24 @@ flight_agent_tool_definitions = [
         }
     }
 ]
+```
 
+**📝 What This Does:**
+- Defines all available tools for the flight agent
+- Specifies each tool's parameters and requirements
+- Mirrors the actual tools available to the flight agent
+- Enables the ToolCallAccuracy evaluator to check proper tool usage
+
+</details>
+
+<details>
+<summary>🔽 Click to expand Part 3: Test Cases</summary>
+
+```python
 # Example test cases for the flight agent with tool calls
 test_cases = [
     {
+        "id": "booking-1",
         "input": "I want to book a flight from New York to London on May 10th",
         "output": "I'd be happy to help you book a flight from New York to London on May 10th. Let me search for available flights for you.",
         "tool_calls": [
@@ -1054,6 +1176,7 @@ test_cases = [
         "context": "There are several flights available from New York to London on May 10th, 2025. The options include morning, afternoon, and evening departures with various airlines."
     },
     {
+        "id": "policy-1",
         "input": "What is the baggage allowance for economy class?",
         "output": "Let me check the baggage policy for economy class flights for you.",
         "tool_calls": [
@@ -1070,6 +1193,7 @@ test_cases = [
         "expected_intent": "policy inquiry"
     },
     {
+        "id": "change-1",
         "input": "I need to change my flight AA123 from JFK. My ticket number is 1234567890.",
         "output": "I understand you want to change your flight AA123 departing from JFK. Let me check what options are available for you.",
         "tool_calls": [
@@ -1089,6 +1213,7 @@ test_cases = [
         "context": "Flight AA123 from JFK is scheduled for April 30, 2025. There are alternative flights available on May 1st and May 2nd with similar schedules."
     },
     {
+        "id": "status-1",
         "input": "Can you check the status of flight AA490 from Los Angeles?",
         "output": "I'd be happy to check the status of flight AA490 from Los Angeles for you.",
         "tool_calls": [
@@ -1104,9 +1229,47 @@ test_cases = [
         ],
         "expected_intent": "flight status",
         "context": "Flight AA490 from Los Angeles is currently on time and scheduled to depart at 2:30 PM local time."
+    },
+    {
+        "id": "user-info-1",
+        "input": "What flights do I have booked?",
+        "output": "I'd be happy to check your booked flights. Let me pull up your flight information.",
+        "tool_calls": [
+            {
+                "type": "tool_call",
+                "tool_call_id": "call_345",
+                "name": "load_user_flight_info",
+                "arguments": {
+                    "user_id": "current_user"
+                }
+            }
+        ],
+        "expected_intent": "booking information",
+        "context": "The user has two upcoming flights: AA789 from NYC to LAX on June 30, 2025, and BA456 from LAX to LHR on July 5, 2025."
     }
 ]
+```
 
+**📝 What This Does:**
+- Defines test scenarios that cover different user intents
+- Includes expected outputs and tool calls for each scenario
+- Provides context information for groundedness evaluation
+- Creates a comprehensive test suite for agent evaluation
+
+**Test Case Anatomy:**
+- **id**: Unique identifier for the test case
+- **input**: The user query
+- **output**: Expected agent response 
+- **tool_calls**: Expected tools the agent should use
+- **expected_intent**: The intent the agent should identify
+- **context**: Background information to evaluate factual accuracy
+
+</details>
+
+<details>
+<summary>🔽 Click to expand Part 4: Evaluation Logic</summary>
+
+```python
 # Initialize all evaluators
 metrics = {
     "Groundedness": GroundednessEvaluator(model_config=model_config),
@@ -1117,11 +1280,26 @@ metrics = {
     "TaskAdherence": TaskAdherenceEvaluator(model_config=model_config)
 }
 
-print("=== Flight Agent Evaluation Results ===")
+# Results storage
+results = {
+    "run_id": run_id,
+    "model": model,
+    "timestamp": datetime.now().isoformat(),
+    "test_cases": {}
+}
+
+print(f"=== Flight Agent Evaluation Results (Model: {model}) ===")
 
 # Run evaluation for each test case
 for idx, case in enumerate(test_cases, 1):
-    print(f"\n*****Test Case {idx}: {case['input']}")
+    case_id = case.get("id", f"case-{idx}")
+    print(f"\n***** Test Case {idx}: {case['input']}")
+    
+    case_results = {
+        "input": case["input"],
+        "metrics": {}
+    }
+    
     for metric_name, evaluator in metrics.items():
         score = None
         try:
@@ -1132,31 +1310,26 @@ for idx, case in enumerate(test_cases, 1):
                         response=case["output"]
                     )
                 else:
-                    print(f"\n   {metric_name}: Skipped (missing context in test case)")
+                    print(f"\n   {metric_name}: Skipped (missing context)")
                     continue
             elif metric_name == "Coherence":
-                # Based on documentation, Coherence evaluator expects query and response parameters
                 score = evaluator(
                     query=case["input"],
                     response=case["output"]
                 )
             elif metric_name == "Relevance":
-                # Based on documentation, Relevance evaluator expects query and response parameters
                 score = evaluator(
                     query=case["input"],
                     response=case["output"]
                 )
             elif metric_name == "IntentResolution":
-                # For Intent Resolution, we need the expected intent
                 score = evaluator(
                     query=case["input"],
                     response=case["output"],
                     tool_definitions=flight_agent_tool_definitions
                 )
                 print(f"\n   {metric_name}: {score} (Expected: {case.get('expected_intent', 'unknown')})")
-                continue
             elif metric_name == "ToolCallAccuracy":
-                # For Tool Call Accuracy, we need the tool calls and tool definitions
                 if "tool_calls" in case:
                     score = evaluator(
                         query=case["input"],
@@ -1164,45 +1337,75 @@ for idx, case in enumerate(test_cases, 1):
                         tool_definitions=flight_agent_tool_definitions
                     )
                 else:
-                    print(f"\n   {metric_name}: Skipped (missing tool_calls in test case)")
+                    print(f"\n   {metric_name}: Skipped (missing tool_calls)")
                     continue
             elif metric_name == "TaskAdherence":
-                # For Task Adherence, evaluate how well the response adheres to the flight agent's task
                 score = evaluator(
                     query=case["input"],
                     response=case["output"],
                     tool_calls=case.get("tool_calls")
                 )
 
-            print(f"\n   {metric_name}: {score}")
+            # Store and print the score
+            case_results["metrics"][metric_name] = float(score)
+            print(f"\n   {metric_name}: {score:.4f}")
+            
         except Exception as e:
             print(f"\n   Error evaluating {metric_name}: {e}")
+            case_results["metrics"][metric_name] = {"error": str(e)}
+    
+    results["test_cases"][case_id] = case_results
 
+# Calculate aggregate metrics
+aggregate_metrics = {}
+for metric in metrics.keys():
+    scores = [
+        case_result["metrics"].get(metric) 
+        for case_result in results["test_cases"].values()
+        if isinstance(case_result["metrics"].get(metric), (int, float))
+    ]
+    if scores:
+        aggregate_metrics[metric] = {
+            "mean": sum(scores) / len(scores),
+            "min": min(scores),
+            "max": max(scores),
+            "count": len(scores)
+        }
+
+results["aggregate_metrics"] = aggregate_metrics
 
 # Print overall results summary
 print("\n=== Overall Evaluation Summary ===")
-print("This summary would show aggregated metrics across all test cases.")
-print("For a production environment, you would typically run these evaluations")
-print("against a larger dataset and track metrics over time.")
+for metric, stats in aggregate_metrics.items():
+    print(f"{metric}: Mean={stats['mean']:.4f}, Min={stats['min']:.4f}, Max={stats['max']:.4f}")
+
+# Save results to file
+results_dir = "evaluation_results"
+os.makedirs(results_dir, exist_ok=True)
+results_file = os.path.join(results_dir, f"flight_agent_eval_{run_id}.json")
+with open(results_file, "w") as f:
+    json.dump(results, f, indent=2)
+
+print(f"\nDetailed results saved to {results_file}")
 ```
+
+**📝 What This Does:**
+- Initializes evaluators for each metric
+- Runs evaluations for each test case
+- Collects and aggregates results
+- Saves detailed results to a JSON file for future reference
+- Calculates summary statistics for each metric
+
 </details>
 
+#### Step 4: Run Baseline Evaluation
 
-Let's break down the key components of this evaluation script:
+Now that we've built our evaluation framework, let's establish a baseline with the current model.
 
-1. **Tool Definitions**: This section defines all available tools for the flight agent in a format that the evaluation SDK can understand.
-
-2. **Test Cases**: These are pre-defined scenarios that represent common customer interactions with the flight agent.
-
-3. **Evaluators**:
-   - **Groundedness**: Measures if responses are factually accurate based on given context
-   - **Coherence**: Measures if responses make logical sense
-   - **Relevance**: Measures if responses are relevant to the user query
-   - **IntentResolution**: Measures if the agent correctly identifies user intent
-   - **ToolCallAccuracy**: Measures if the agent uses the right tools with the right parameters
-   - **TaskAdherence**: Measures if the agent stays on task
-
-#### Step 4: Run the Evaluation
+**🎯 What This Step Accomplishes:**
+- Measures current performance with the existing LLM
+- Creates a reference point for comparison
+- Identifies areas of strength and weakness
 
 Execute the script to evaluate your flight agent:
 
@@ -1211,43 +1414,298 @@ cd voice_agent/app/backend
 python -m tests.test_flight_agent_evaluation
 ```
 
-The output will display scores for each evaluator across all test cases.
+The output will display scores for each evaluator across all test cases, along with aggregate metrics.
 
-#### Step 5: Analyze the Results
+**📊 Sample Output:**
+```
+=== Flight Agent Evaluation Results (Model: gpt-4o-mini) ===
 
-After running the evaluation, you'll see scores for each metric. These scores help you:
+***** Test Case 1: I want to book a flight from New York to London on May 10th
 
-1. Identify areas where the agent performs well
-2. Pinpoint specific scenarios where the agent struggles
-3. Compare performance before and after model upgrades
+   Groundedness: 0.8765
 
-Focus on metrics that score below your expectations and look for patterns in the test cases where the agent performed poorly.
+   Coherence: 0.9321
 
-#### Step 6: Upgrade the LLM 
+   Relevance: 0.9567
 
-Upgrade the LLM by picking another LLM to evaluate.  Update the file in Step 1 with name of new LLM.
+   IntentResolution: 0.9123 (Expected: flight booking)
 
-#### Step 7: Rerun the evaluation
+   ToolCallAccuracy: 0.8876
 
-Follow Step 4: Run the Evaluation
+   TaskAdherence: 0.9012
 
-#### Step 8: Analyze and compare results between the runs
+***** Test Case 2: What is the baggage allowance for economy class?
+...
 
-Review Step 5: Analyze the Results
+=== Overall Evaluation Summary ===
+Groundedness: Mean=0.8843, Min=0.8234, Max=0.9321
+Coherence: Mean=0.9176, Min=0.8765, Max=0.9567
+Relevance: Mean=0.9432, Min=0.9012, Max=0.9876
+IntentResolution: Mean=0.9021, Min=0.8543, Max=0.9456
+ToolCallAccuracy: Mean=0.8832, Min=0.8234, Max=0.9321
+TaskAdherence: Mean=0.9087, Min=0.8654, Max=0.9432
 
-#### Step 9: Iterate and Improve
+Detailed results saved to evaluation_results/flight_agent_eval_gpt-4o-mini-20250618-142536.json
+```
 
-Based on your findings:
+#### Step 5: Analyze Baseline Results
 
-1. Modify the agent's prompts or tool definitions
-2. Add more test cases for scenarios that revealed issues
-3. Re-run the evaluation to check if changes improved performance
+After running the evaluation, it's time to interpret the results systematically.
+
+**🎯 What This Step Accomplishes:**
+- Identifies specific performance patterns
+- Pinpoints areas for improvement
+- Sets expectations for model upgrades
+
+##### 📊 Interpreting Evaluation Metrics
+
+| Metric | What Good Looks Like | What Bad Looks Like | How to Improve |
+|--------|----------------------|--------------------|----------------|
+| **Groundedness** | Facts match source context | Fabricated details | Better context handling in agent prompts |
+| **Coherence** | Logical, well-structured responses | Confusing or contradictory answers | Enhance system prompts with structure guidance |
+| **Relevance** | Direct answers to user queries | Off-topic or tangential responses | Improve intent detection and focus directives |
+| **IntentResolution** | Correctly identifies user needs | Misunderstands user requests | Enhance intent categorization in prompts |
+| **ToolCallAccuracy** | Correct tools with proper parameters | Wrong tools or invalid parameters | Better tool documentation in system prompts |
+| **TaskAdherence** | Stays on task consistently | Gets distracted or veers off-topic | Add focus directives in system prompts |
+
+##### Finding Patterns in Test Results
+
+Look for patterns across your test cases:
+
+1. **Are certain metrics consistently low?** This suggests a systematic issue.
+2. **Do specific scenarios perform poorly?** This may indicate domain knowledge gaps.
+3. **Are there outlier cases?** These may reveal edge case handling issues.
+4. **How do complex vs. simple queries compare?** This shows scaling with complexity.
+
+**📝 Document Your Findings:**
+Create a baseline findings document that captures:
+- Current performance levels across all metrics
+- Specific areas of strength and weakness
+- Hypotheses about what might improve with a model upgrade
+- Priority areas for improvement
+
+#### Step 6: Upgrade the LLM
+
+Now it's time to evaluate an upgraded model to see if it addresses the issues identified in the baseline.
+
+**🎯 What This Step Accomplishes:**
+- Changes the deployed model to a newer or more capable version
+- Prepares for comparative evaluation
+- Implements best practices for model transitions
+
+**Option A: Update Local Environment for Testing**
+
+Edit the `.env` file in the backend directory to use a different model:
+
+```
+# Change this:
+AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini
+
+# To this:
+AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o
+```
+
+**Option B: Test Multiple Models in Script**
+
+Alternatively, you can modify the evaluation script to test multiple models in a single run:
+
+```python
+# Add at the top of your script
+models_to_test = ["gpt-4o-mini", "gpt-4o"]
+
+# Then modify the evaluation loop to iterate through models
+for model in models_to_test:
+    model_config = {
+        "azure_deployment": model,
+        "azure_endpoint": endpoint,
+        "api_key": api_key
+    }
+    # Run evaluation with this model...
+```
+
+**📋 Model Upgrade Best Practices:**
+1. **Start with testing**, not production deployment
+2. **Document the upgrade** process and expected outcomes
+3. **Configure fallback mechanisms** in case of issues
+4. **Monitor closely** after upgrading
+
+#### Step 7: Run Comparative Evaluation
+
+Run the evaluation with the new model to see the performance differences.
+
+**🎯 What This Step Accomplishes:**
+- Collects performance data on the upgraded model
+- Enables direct comparison with baseline
+- Provides evidence for upgrade decisions
+
+Execute the script again with the new model:
+
+```bash
+cd voice_agent/app/backend
+python -m tests.test_flight_agent_evaluation
+```
+
+The results will be saved to a new file with the new model name in the ID.
+
+#### Step 8: Analyze Performance Improvements
+
+Compare the results between models to quantify improvements and identify any new issues.
+
+**🎯 What This Step Accomplishes:**
+- Quantifies the benefits of the model upgrade
+- Identifies any regressions or unexpected behavior
+- Provides data for cost-benefit analysis
+
+##### 📊 Creating a Comparative Analysis
+
+Create a comparison between the models using the saved result files:
+
+```python
+# Sample comparison script (add to your evaluation script if desired)
+import json
+import os
+import matplotlib.pyplot as plt
+
+def compare_results(file1, file2):
+    with open(file1, 'r') as f1, open(file2, 'r') as f2:
+        results1 = json.load(f1)
+        results2 = json.load(f2)
+    
+    model1 = results1["model"]
+    model2 = results2["model"]
+    
+    metrics = list(results1["aggregate_metrics"].keys())
+    model1_scores = [results1["aggregate_metrics"][m]["mean"] for m in metrics]
+    model2_scores = [results2["aggregate_metrics"][m]["mean"] for m in metrics]
+    
+    # Print comparison
+    print(f"\n=== Model Comparison: {model1} vs {model2} ===")
+    for i, metric in enumerate(metrics):
+        diff = model2_scores[i] - model1_scores[i]
+        print(f"{metric}: {model1}={model1_scores[i]:.4f}, {model2}={model2_scores[i]:.4f}, " +
+              f"Difference: {diff:.4f} ({diff/model1_scores[i]*100:.2f}%)")
+    
+    # Optional: Create visualization
+    fig, ax = plt.subplots(figsize=(10, 6))
+    x = range(len(metrics))
+    width = 0.35
+    ax.bar([i - width/2 for i in x], model1_scores, width, label=model1)
+    ax.bar([i + width/2 for i in x], model2_scores, width, label=model2)
+    ax.set_ylabel('Score')
+    ax.set_title('Model Comparison by Metric')
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics)
+    ax.legend()
+    plt.savefig(f"evaluation_results/comparison_{model1}_vs_{model2}.png")
+    
+    return {
+        "model1": model1,
+        "model2": model2,
+        "metrics": {
+            m: {
+                "model1_score": results1["aggregate_metrics"][m]["mean"],
+                "model2_score": results2["aggregate_metrics"][m]["mean"],
+                "difference": results2["aggregate_metrics"][m]["mean"] - results1["aggregate_metrics"][m]["mean"],
+                "percent_change": (results2["aggregate_metrics"][m]["mean"] - results1["aggregate_metrics"][m]["mean"]) / 
+                                results1["aggregate_metrics"][m]["mean"] * 100
+            } for m in metrics
+        }
+    }
+
+# Usage:
+# comparison = compare_results("evaluation_results/flight_agent_eval_gpt-4o-mini-20250618-142536.json", 
+#                           "evaluation_results/flight_agent_eval_gpt-4o-20250618-143045.json")
+```
+
+**📊 Key Metrics to Compare:**
+
+1. **Overall metrics improvement**: How much better is the new model across all metrics?
+2. **Performance on weak areas**: Did the new model address specific weaknesses?
+3. **Consistency**: Is performance more consistent across different test cases?
+4. **Error rates**: Are there fewer errors or failures?
+
+**📈 Sample Comparison Output:**
+```
+=== Model Comparison: gpt-4o-mini vs gpt-4o ===
+Groundedness: gpt-4o-mini=0.8843, gpt-4o=0.9321, Difference: 0.0478 (5.41%)
+Coherence: gpt-4o-mini=0.9176, gpt-4o=0.9543, Difference: 0.0367 (4.00%)
+Relevance: gpt-4o-mini=0.9432, gpt-4o=0.9654, Difference: 0.0222 (2.35%)
+IntentResolution: gpt-4o-mini=0.9021, gpt-4o=0.9487, Difference: 0.0466 (5.17%)
+ToolCallAccuracy: gpt-4o-mini=0.8832, gpt-4o=0.9376, Difference: 0.0544 (6.16%)
+TaskAdherence: gpt-4o-mini=0.9087, gpt-4o=0.9432, Difference: 0.0345 (3.80%)
+```
+
+#### Step 9: Document Findings and Next Steps
+
+Prepare a comprehensive analysis of your findings to guide the upgrade decision.
+
+**🎯 What This Step Accomplishes:**
+- Creates clear documentation of the evaluation process
+- Provides evidence-based recommendations
+- Establishes a framework for future evaluations
+
+**📝 Recommended Documentation Structure:**
+
+1. **Executive Summary**
+   - Overall findings and recommendations
+   - Key metrics improvements
+   - Cost-benefit analysis
+
+2. **Detailed Evaluation Results**
+   - Comparison across all metrics
+   - Test case analysis
+   - Visualizations of improvements
+
+3. **Implementation Recommendations**
+   - Suggested deployment approach
+   - Required system changes
+   - Monitoring recommendations
+
+4. **Next Steps**
+   - Additional testing needed
+   - System prompt adjustments
+   - Future evaluation schedule
+
+**⚙️ Best Practices for Production Upgrades**
+
+1. **Implement gradual rollout**:
+   - Start with a small percentage of traffic
+   - Monitor closely for issues
+   - Gradually increase traffic if performance is good
+
+2. **Set up comprehensive monitoring**:
+   - Track key metrics in real-time
+   - Set alerts for performance degradation
+   - Implement automated fallbacks if needed
+
+3. **Maintain model versioning**:
+   - Document all model changes
+   - Keep previous model available as fallback
+   - Track changes in performance over time
+
+4. **Regular re-evaluation**:
+   - Schedule periodic evaluations
+   - Add new test cases as issues are discovered
+   - Continuously improve evaluation framework
 
 #### What You've Learned
 
-- How to set up and run evaluations using the Azure AI Evaluation SDK
-- How different metrics help assess various aspects of agent performance
-- How to interpret evaluation results to guide improvements
+By completing this exercise, you've gained valuable skills in:
+
+- **Systematic LLM evaluation** using industry-standard metrics
+- **Comparative analysis** of different AI models
+- **Data-driven decision making** for AI system improvements
+- **Best practices** for model upgrades in production environments
+- **Performance monitoring** and tracking methodologies
+- **Documentation** of AI system changes and improvements
+
+These skills are essential for maintaining high-quality AI systems in production and making informed decisions about model upgrades and changes.
+
+#### Further Resources
+
+- [Azure AI Evaluation SDK Documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/evaluation)
+- [LLM Evaluation Best Practices](https://learn.microsoft.com/en-us/azure/machine-learning/concept-model-evaluation-llm)
+- [Azure OpenAI Model Comparison Guide](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models)
 
 This approach provides quantitative metrics to measure the impact of upgrading your agent's LLM and helps ensure that changes maintain or improve the user experience.
 
