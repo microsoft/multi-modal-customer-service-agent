@@ -1347,23 +1347,59 @@ for idx, case in enumerate(test_cases, 1):
                 )
 
             # Store and print the score
-            case_results["metrics"][metric_name] = float(score)
-            print(f"\n   {metric_name}: {score:.4f}")
+            if isinstance(score, dict):
+                # Extract the score value from the dictionary result
+                # Different evaluators use different keys for the main score
+                score_value = None
+                if metric_name.lower() in score:
+                    score_value = score[metric_name.lower()]
+                elif "score" in score:
+                    score_value = score["score"]
+                elif metric_name.lower() + "_score" in score:
+                    score_value = score[metric_name.lower() + "_score"]
+                elif any(key for key in score.keys() if "score" in key.lower()):
+                    # Find the first key that contains "score"
+                    score_key = next(key for key in score.keys() if "score" in key.lower())
+                    score_value = score[score_key]
+                
+                if score_value is not None and isinstance(score_value, (int, float)):
+                    print(f"\n   {metric_name}: {score_value:.4f} (full result: {score})")
+                    case_results["metrics"][metric_name] = {
+                        "score": float(score_value),
+                        "details": score
+                    }
+                else:
+                    print(f"\n   {metric_name}: {score}")
+                    case_results["metrics"][metric_name] = score
+            else:
+                # Handle simple numeric scores
+                case_results["metrics"][metric_name] = float(score)
+                print(f"\n   {metric_name}: {score:.4f}")
             
-        except Exception as e:
+        except Exception as e: 
             print(f"\n   Error evaluating {metric_name}: {e}")
             case_results["metrics"][metric_name] = {"error": str(e)}
-    
+               
     results["test_cases"][case_id] = case_results
 
 # Calculate aggregate metrics
 aggregate_metrics = {}
 for metric in metrics.keys():
-    scores = [
-        case_result["metrics"].get(metric) 
-        for case_result in results["test_cases"].values()
-        if isinstance(case_result["metrics"].get(metric), (int, float))
-    ]
+    scores = []
+    for case_result in results["test_cases"].values():
+        metric_result = case_result["metrics"].get(metric)
+        if metric_result is None:
+            continue
+        
+        # Extract the score from different possible structures
+        if isinstance(metric_result, (int, float)):
+            scores.append(metric_result)
+        elif isinstance(metric_result, dict) and "score" in metric_result:
+            scores.append(metric_result["score"])
+        elif isinstance(metric_result, dict) and metric.lower() in metric_result:
+            if isinstance(metric_result[metric.lower()], (int, float)):
+                scores.append(metric_result[metric.lower()])
+    
     if scores:
         aggregate_metrics[metric] = {
             "mean": sum(scores) / len(scores),
@@ -1380,7 +1416,7 @@ for metric, stats in aggregate_metrics.items():
     print(f"{metric}: Mean={stats['mean']:.4f}, Min={stats['min']:.4f}, Max={stats['max']:.4f}")
 
 # Save results to file
-results_dir = "evaluation_results"
+results_dir = "tests/test_results"
 os.makedirs(results_dir, exist_ok=True)
 results_file = os.path.join(results_dir, f"flight_agent_eval_{run_id}.json")
 with open(results_file, "w") as f:
@@ -1416,28 +1452,31 @@ python -m tests.test_flight_agent_evaluation
 
 The output will display scores for each evaluator across all test cases, along with aggregate metrics.
 
-**📊 Sample Output:**
+**📊 Expected Output Format:**
 ```
 === Flight Agent Evaluation Results (Model: gpt-4o-mini) ===
 
 ***** Test Case 1: I want to book a flight from New York to London on May 10th
 
-   Groundedness: 0.8765
+   Groundedness: 4.0000 (full result: {'groundedness': 4.0, 'gpt_groundedness': 4.0, 'groundedness_reason': '...', 'groundedness_result': 'pass', 'groundedness_threshold': 3})
 
-   Coherence: 0.9321
+   Coherence: 4.0000 (full result: {'coherence': 4.0, 'gpt_coherence': 4.0, 'coherence_reason': '...', 'coherence_result': 'pass', 'coherence_threshold': 3})
 
-   Relevance: 0.9567
+   Relevance: 3.0000 (full result: {'relevance': 3.0, 'gpt_relevance': 3.0, 'relevance_reason': '...', 'relevance_result': 'pass', 'relevance_threshold': 3})
 
-   IntentResolution: 0.9123 (Expected: flight booking)
+   IntentResolution: {'intent_resolution': 4.0, 'intent_resolution_result': 'pass', 'intent_resolution_threshold': 3, 'intent_resolution_reason': '...', 'additional_details': {...}} (Expected: flight booking)
 
-   ToolCallAccuracy: 0.8876
+   ToolCallAccuracy: {'tool_call_accuracy': '...', ...}
 
-   TaskAdherence: 0.9012
+   TaskAdherence: {'task_adherence': 2.0, 'task_adherence_result': 'fail', 'task_adherence_threshold': 3, 'task_adherence_reason': '...'}
 
 ***** Test Case 2: What is the baggage allowance for economy class?
 ...
 
 === Overall Evaluation Summary ===
+Groundedness: Mean=2.6000, Min=1.0000, Max=4.0000
+Coherence: Mean=2.8000, Min=1.0000, Max=4.0000
+Relevance: Mean=2.6000, Min=1.0000, Max=3.0000
 Groundedness: Mean=0.8843, Min=0.8234, Max=0.9321
 Coherence: Mean=0.9176, Min=0.8765, Max=0.9567
 Relevance: Mean=0.9432, Min=0.9012, Max=0.9876
@@ -1467,6 +1506,18 @@ After running the evaluation, it's time to interpret the results systematically.
 | **IntentResolution** | Correctly identifies user needs | Misunderstands user requests | Enhance intent categorization in prompts |
 | **ToolCallAccuracy** | Correct tools with proper parameters | Wrong tools or invalid parameters | Better tool documentation in system prompts |
 | **TaskAdherence** | Stays on task consistently | Gets distracted or veers off-topic | Add focus directives in system prompts |
+
+##### Understanding Evaluation Results:
+
+The evaluation results provide rich information beyond just a numeric score:
+
+- **score value**: The numeric score (e.g., 4.0 for Groundedness)
+- **_result**: Whether the response passes or fails according to a threshold (e.g., 'pass', 'fail')
+- **_threshold**: The minimum value to be considered passing (e.g., 3)
+- **_reason**: Detailed explanation of the score and reasoning
+- **additional_details**: More specific information about the evaluation
+
+When analyzing the baseline results, pay attention not just to the numeric scores but also to the qualitative feedback in the `_reason` fields, which can provide valuable insights into specific areas for improvement.
 
 ##### Finding Patterns in Test Results
 
@@ -1623,17 +1674,6 @@ def compare_results(file1, file2):
 2. **Performance on weak areas**: Did the new model address specific weaknesses?
 3. **Consistency**: Is performance more consistent across different test cases?
 4. **Error rates**: Are there fewer errors or failures?
-
-**📈 Sample Comparison Output:**
-```
-=== Model Comparison: gpt-4o-mini vs gpt-4o ===
-Groundedness: gpt-4o-mini=0.8843, gpt-4o=0.9321, Difference: 0.0478 (5.41%)
-Coherence: gpt-4o-mini=0.9176, gpt-4o=0.9543, Difference: 0.0367 (4.00%)
-Relevance: gpt-4o-mini=0.9432, gpt-4o=0.9654, Difference: 0.0222 (2.35%)
-IntentResolution: gpt-4o-mini=0.9021, gpt-4o=0.9487, Difference: 0.0466 (5.17%)
-ToolCallAccuracy: gpt-4o-mini=0.8832, gpt-4o=0.9376, Difference: 0.0544 (6.16%)
-TaskAdherence: gpt-4o-mini=0.9087, gpt-4o=0.9432, Difference: 0.0345 (3.80%)
-```
 
 #### Step 9: Document Findings and Next Steps
 
