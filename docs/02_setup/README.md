@@ -99,7 +99,7 @@ You can run the project in your local VS Code Dev Container using the [Dev Conta
    ```
 
 1. When prompted provided the following names:
-   1. Environment name (used as the name of the new resource group to deploy into)
+   1. Environment name (used as the name of the new or existing resource group to deploy into)
    1. Azure Subscription to use
    1. Azure location to use
 

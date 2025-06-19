@@ -1,16 +1,11 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-    "name": "multi-modal AI Agent",
-	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
-    // Features to add to the dev container. More info: https://containers.dev/features.
-    "features": {
-        "ghcr.io/devcontainers/features/azure-cli:1": {},
-        "ghcr.io/azure/azure-dev/azd:latest": {},
-        "ghcr.io/devcontainers/features/node:1": {
-            "version": "20"
-        }
-    },
+    "name": "Multi-Modal Customer Service Agent",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/workspaces/multi-modal-customer-service-agent",
+    
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
@@ -21,7 +16,10 @@
                 "esbenp.prettier-vscode",
                 "bradlc.vscode-tailwindcss",
                 "GitHub.copilot-chat"
-            ]
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python"
+            }
         }
     },
     // Use 'forwardPorts' to make a list of ports inside the container available locally.

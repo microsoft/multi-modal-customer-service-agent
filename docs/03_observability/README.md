@@ -30,6 +30,20 @@ The bicep infrastructure deploys an Application Insights resource where you can 
 
 ## Observe Application Behavior
 
+### Local Configuration
+
+You can see telemetry data if you are running the app locally, in a local dev container, or in Azure via `azd up`. If you are using GitHub Codespaces, there is no observability data. We recommend you run `azd up` and interact with the app in Azure environment to see observability data.
+
+Configuration steps to wire up the Aspire Dashboard:
+1. Update the `.env` file with this value: `TELEMETRY_SCENARIO=console,aspire_dashboard`
+1. If running the app locally (no dev container), follow these steps:
+    1. ```bash
+        docker run --rm -it -d -p 18888:18888 -p 4317:18889 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+        ```
+    2. In `.env`, set `ASPIRE_DASHBOARD_ENDPOINT` to `http://localhost:4317`
+1. If running the app in a dev container, `docker-compose.yml` spins up the dashboard alongside your dev container. In `.env` set `ASPIRE_DASHBOARD_ENDPOINT` to `http://aspire-dashboard:18889` 
+1. In the Azure environment, no additional steps are needed to configure observability.
+
 ### Conduct a conversation with the customer service agents
 
 Conduct a conversation with the customer service agents following this sequence:
@@ -40,9 +54,14 @@ Conduct a conversation with the customer service agents following this sequence:
 
 ### Observe application behavior in Aspire Dashboard
 
+Browse the Aspire Dashboard:
+1. If running locally or in a dev container, go to [http://localhost:18888](http://localhost:18888)
+1. If running in Azure:
 - Go to your resource group in Azure Portal
 - Click on the `aspire-dashboard` resource
 - Click on the `Application URL` in the top right corner to navigate to the dashboard
+
+See the observability data:
 ![Logs](../../media/aspire_dashboard_logs.png)
 - Observe the application log showing the conversation you conducted. Locate an entry: "Function hotel_tools-load_user_reservation_info invoking." and click on the Trace link. This navigates you to the Trace page for that function call.
 - Observe the details of the trace, such as the duration and other metadata.
