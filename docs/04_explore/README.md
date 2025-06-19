@@ -110,36 +110,52 @@ Before we begin building, let's understand how the multi-agent system works and 
 ##### 🏗️ Architecture Overview
 The system uses a **Router-Agent pattern** with specialized domain agents:
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Router Agent  │    │  Flight Agent   │    │  Hotel Agent    │
-│ (Intent Detection)  │    │ (Flights & Status) │    │ (Reservations)  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │              ┌─────────────────┐             │
-         └──────────────│ Car Rental Agent │─────────────┘
-                        │   (NEW!)        │
-                        └─────────────────┘
-```
+![Logical Architecture](../../media/logical_architecture.png)
+
+**Multi-Agent System Components:**
+
+| Component | Role | Responsibility |
+|:----------|:-----|:---------------|
+| 🧠 **Router Agent** | Central Dispatcher | Analyzes user intent and routes to the appropriate specialized agent |
+| ✈️ **Flight Agent** | Domain Expert | Handles all flight bookings, status checks, and airline policies |
+| 🏨 **Hotel Agent** | Domain Expert | Manages hotel reservations and accommodation information |
+| 🚗 **Car Rental Agent** | Domain Expert<br>(NEW!) | Provides car rental services, availability, and policy information |
+
+**Pattern Flow:**
+1. User query → Router Agent analyzes intent
+2. Router selects appropriate domain agent based on intent classification
+3. Domain agent processes query using specialized tools and knowledge
+4. Response is returned to the user via the original interaction channel
 
 ##### 🔄 Agent Interaction Flow
-1. **User Input** → Router Agent analyzes intent
-2. **Intent Detection** → Determines which specialized agent to use
-3. **Agent Selection** → Routes to appropriate domain agent (Flight, Hotel, or Car Rental)
-4. **Tool Execution** → Agent uses its specialized tools to fulfill the request
-5. **Response** → Agent returns formatted response to user
+
+| Step | Process | Description |
+|:----:|:-------:|:------------|
+| 1️⃣ | **User Input** | Customer query is received by the system |
+| 2️⃣ | **Intent Analysis** | Router agent analyzes the intent of the query |
+| 3️⃣ | **Agent Selection** | Query is routed to the appropriate domain agent (Flight, Hotel, or Car Rental) |
+| 4️⃣ | **Tool Execution** | Selected agent uses specialized tools to fulfill the request |
+| 5️⃣ | **Response Generation** | Agent formulates a natural language response |
+| 6️⃣ | **User Delivery** | Response is delivered back to the customer |
 
 ##### 💡 Why This Pattern?
-- **Separation of Concerns**: Each agent handles one business domain
-- **Scalability**: Easy to add new domains without affecting existing ones
-- **Maintainability**: Domain-specific logic is isolated and easier to update
-- **Flexibility**: Can easily modify or replace individual agents
+
+| Key Benefit | Description |
+|:------------|:------------|
+| 🧩 **Separation of Concerns** | Each specialized agent handles one business domain, allowing focused development and expertise |
+| 📈 **Scalability** | New domains can be added without disrupting existing functionality |
+| 🔧 **Maintainability** | Domain-specific logic is isolated, making it easier to update and debug |
+| 🔄 **Flexibility** | Individual agents can be modified or replaced independently |
+| 🚀 **Performance** | Router efficiently directs queries to specialized agents with domain knowledge |
 
 ##### 🧩 Components We'll Build
-1. **Agent Tools** (`car_rental_plugins.py`) - The functions the agent can call
-2. **Agent Profile** (`car_rental_agent_profile.yaml`) - The agent's persona and behavior
-3. **System Integration** - Connecting the agent to the router and intent detection
-4. **Knowledge Base** - Semantic search for rental policies using embeddings
+
+| Component | File/Resource | Purpose |
+|:----------|:--------------|:--------|
+| 🛠️ **Agent Tools** | `car_rental_plugins.py` | Functions the agent can call to perform car rental operations |
+| 🤖 **Agent Profile** | `car_rental_agent_profile.yaml` | Defines the agent's persona, behavior, and system prompts |
+| 🔌 **System Integration** | Updates to existing code | Connects the new agent to the router and intent detection system |
+| 🧠 **Knowledge Base** | Embedding-based search | Provides semantic search for car rental policies using Azure OpenAI embeddings |
 
 #### Step 1: Create the Car Rental Tools Plugin
 
@@ -262,24 +278,6 @@ class Car_Rental_Tools:
 - **Syntax Errors**: Check Python indentation and parentheses matching
 - **Function Not Found**: Verify the `@kernel_function` decorator is applied correctly
 
-**🧪 Test Your Work:**
-Try creating a simple test script to verify your functions work:
-```python
-# Test script (optional)
-from car_rental_plugins import Car_Rental_Tools
-import asyncio
-
-async def test_functions():
-    tools = Car_Rental_Tools()
-    cars = await tools.search_cars("New York", "2025-07-15", "2025-07-20")
-    print("Search Results:", cars)
-    
-    details = await tools.get_car_details("1")
-    print("Car Details:", details)
-
-# asyncio.run(test_functions())  # Uncomment to run test
-```
-
 #### Step 2: Create the Car Rental Agent Profile
 
 **🎯 What This Step Accomplishes:**
@@ -295,7 +293,7 @@ Agent profiles in this system define:
 - **Responsibilities**: What the agent should and shouldn't do
 - **Tone**: Professional, helpful, courteous communication style
 
-#### Step 2: Create the Car Rental Agent Profile
+#### Create the Car Rental Agent Profile
 
 Create the agent configuration file that defines the car rental agent's persona and behavior.
 
@@ -374,8 +372,6 @@ def _load_agents(self):
 ```
 </details>
 
-**✅ Validation:** Check that the import works and the agent loads without errors when starting the application.
-
 #### Step 4: Update Intent Detection
 
 Configure the system to recognize car rental-related queries and route them to the new agent.
@@ -394,8 +390,6 @@ Update the `detect_intent` method to include the car rental agent in the system 
 </details>
 
 > **📝 Note:** The intent detection model has already been updated to recognize car rental-related queries. See the `intent_detection_model` directory for training data and model details.
-
-**✅ Validation:** Test that car rental queries (e.g., "I need to rent a car") are properly routed to the car rental agent.
 
 #### Step 5: Add Semantic Search for Rental Policies
 
@@ -542,8 +536,6 @@ Add the required imports and search function to the plugin:
 ```
 </details>
 
-**✅ Validation:** Test the policy search function by querying for rental policies.
-
 ##### Step 5d: Create Embedding Generation Script
 
 **🎯 What This Script Does:**
@@ -626,8 +618,6 @@ if __name__ == "__main__":
 - **Processing Time**: Embedding generation may take a few seconds per document
 - **API Costs**: Each embedding call uses Azure OpenAI tokens
 - **File Size**: The JSON file will grow significantly after adding embeddings
-
-**✅ Validation:** Verify the script file is created in the correct scripts directory.
 
 ##### Step 5e: Generate Embeddings
 
@@ -1453,39 +1443,44 @@ python -m tests.test_flight_agent_evaluation
 The output will display scores for each evaluator across all test cases, along with aggregate metrics.
 
 **📊 Expected Output Format:**
-```
-=== Flight Agent Evaluation Results (Model: gpt-4o-mini) ===
 
-***** Test Case 1: I want to book a flight from New York to London on May 10th
+<details>
+<summary>🔽 Click to view expect output format</summary>
 
-   Groundedness: 4.0000 (full result: {'groundedness': 4.0, 'gpt_groundedness': 4.0, 'groundedness_reason': '...', 'groundedness_result': 'pass', 'groundedness_threshold': 3})
+    ```
+    === Flight Agent Evaluation Results (Model: gpt-4o-mini) ===
 
-   Coherence: 4.0000 (full result: {'coherence': 4.0, 'gpt_coherence': 4.0, 'coherence_reason': '...', 'coherence_result': 'pass', 'coherence_threshold': 3})
+    ***** Test Case 1: I want to book a flight from New York to London on May 10th
 
-   Relevance: 3.0000 (full result: {'relevance': 3.0, 'gpt_relevance': 3.0, 'relevance_reason': '...', 'relevance_result': 'pass', 'relevance_threshold': 3})
+    Groundedness: 4.0000 (full result: {'groundedness': 4.0, 'gpt_groundedness': 4.0, 'groundedness_reason': '...', 'groundedness_result': 'pass', 'groundedness_threshold': 3})
 
-   IntentResolution: {'intent_resolution': 4.0, 'intent_resolution_result': 'pass', 'intent_resolution_threshold': 3, 'intent_resolution_reason': '...', 'additional_details': {...}} (Expected: flight booking)
+    Coherence: 4.0000 (full result: {'coherence': 4.0, 'gpt_coherence': 4.0, 'coherence_reason': '...', 'coherence_result': 'pass', 'coherence_threshold': 3})
 
-   ToolCallAccuracy: {'tool_call_accuracy': '...', ...}
+    Relevance: 3.0000 (full result: {'relevance': 3.0, 'gpt_relevance': 3.0, 'relevance_reason': '...', 'relevance_result': 'pass', 'relevance_threshold': 3})
 
-   TaskAdherence: {'task_adherence': 2.0, 'task_adherence_result': 'fail', 'task_adherence_threshold': 3, 'task_adherence_reason': '...'}
+    IntentResolution: {'intent_resolution': 4.0, 'intent_resolution_result': 'pass', 'intent_resolution_threshold': 3, 'intent_resolution_reason': '...', 'additional_details': {...}} (Expected: flight booking)
 
-***** Test Case 2: What is the baggage allowance for economy class?
-...
+    ToolCallAccuracy: {'tool_call_accuracy': '...', ...}
 
-=== Overall Evaluation Summary ===
-Groundedness: Mean=2.6000, Min=1.0000, Max=4.0000
-Coherence: Mean=2.8000, Min=1.0000, Max=4.0000
-Relevance: Mean=2.6000, Min=1.0000, Max=3.0000
-Groundedness: Mean=0.8843, Min=0.8234, Max=0.9321
-Coherence: Mean=0.9176, Min=0.8765, Max=0.9567
-Relevance: Mean=0.9432, Min=0.9012, Max=0.9876
-IntentResolution: Mean=0.9021, Min=0.8543, Max=0.9456
-ToolCallAccuracy: Mean=0.8832, Min=0.8234, Max=0.9321
-TaskAdherence: Mean=0.9087, Min=0.8654, Max=0.9432
+    TaskAdherence: {'task_adherence': 2.0, 'task_adherence_result': 'fail', 'task_adherence_threshold': 3, 'task_adherence_reason': '...'}
 
-Detailed results saved to evaluation_results/flight_agent_eval_gpt-4o-mini-20250618-142536.json
-```
+    ***** Test Case 2: What is the baggage allowance for economy class?
+    ...
+
+    === Overall Evaluation Summary ===
+    Groundedness: Mean=2.6000, Min=1.0000, Max=4.0000
+    Coherence: Mean=2.8000, Min=1.0000, Max=4.0000
+    Relevance: Mean=2.6000, Min=1.0000, Max=3.0000
+    Groundedness: Mean=0.8843, Min=0.8234, Max=0.9321
+    Coherence: Mean=0.9176, Min=0.8765, Max=0.9567
+    Relevance: Mean=0.9432, Min=0.9012, Max=0.9876
+    IntentResolution: Mean=0.9021, Min=0.8543, Max=0.9456
+    ToolCallAccuracy: Mean=0.8832, Min=0.8234, Max=0.9321
+    TaskAdherence: Mean=0.9087, Min=0.8654, Max=0.9432
+
+    Detailed results saved to evaluation_results/flight_agent_eval_gpt-4o-mini-20250618-142536.json
+    ```
+</details>
 
 #### Step 5: Analyze Baseline Results
 
@@ -1683,28 +1678,6 @@ Prepare a comprehensive analysis of your findings to guide the upgrade decision.
 - Creates clear documentation of the evaluation process
 - Provides evidence-based recommendations
 - Establishes a framework for future evaluations
-
-**📝 Recommended Documentation Structure:**
-
-1. **Executive Summary**
-   - Overall findings and recommendations
-   - Key metrics improvements
-   - Cost-benefit analysis
-
-2. **Detailed Evaluation Results**
-   - Comparison across all metrics
-   - Test case analysis
-   - Visualizations of improvements
-
-3. **Implementation Recommendations**
-   - Suggested deployment approach
-   - Required system changes
-   - Monitoring recommendations
-
-4. **Next Steps**
-   - Additional testing needed
-   - System prompt adjustments
-   - Future evaluation schedule
 
 **⚙️ Best Practices for Production Upgrades**
 
